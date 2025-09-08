@@ -1,0 +1,34 @@
+[project]
+name = "secretsweeper"
+version = "0.1.0"
+description = "Fast in memory secrets sanitizing C-Python module."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "poetry>=2.1.4",
+    "pytest>=8.4.2",
+    "ruff>=0.12.12",
+    "ziggy-pydust>=0.25.1",
+]
+
+[tool.poetry]
+packages = [ { include = "secretsweeper" } ]
+include = [
+    { path = "src/", format = "sdist" },
+    { path = "secretsweeper/*.so", format = "wheel" },
+]
+
+[tool.poetry.build]
+script = "build.py"
+
+[build-system]
+requires = ["poetry-core", "ziggy-pydust==0.25.1"]
+build-backend = "poetry.core.masonry.api"
+
+
+[[tool.pydust.ext_module]]
+name = "secretsweeper._core"
+root = "src/core.zig"

@@ -1,0 +1,3 @@
+# Fast in memory secrets sanitizing C-Python module.
+
+...
