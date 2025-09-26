@@ -1,4 +1,6 @@
-# Fast in memory secrets sanitizing C-Python module.
+# Secretsweeper
+
+Secretsweeper is a fast, in-memory secret-sanitizing C-Python module written in Zig, designed for speed.
 
 ```shell 
 » python          
