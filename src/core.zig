@@ -39,7 +39,6 @@ pub const NoNewLineIterator = struct {
 /// Masks specific words in the input string with the asterisks.
 pub fn mask(args: struct { input: py.PyBytes(root), words: py.PyTuple(root), limit: u64 = MAX_NUMBER_OF_STARS }) !py.PyBytes(root) {
     const max_number_of_stars = args.limit;
-    _ = max_number_of_stars; // TODO Should be added soon
     const input_slice = try args.input.asSlice();
 
     var ac = try Aho.init(py_allocator);
@@ -50,7 +49,7 @@ pub fn mask(args: struct { input: py.PyBytes(root), words: py.PyTuple(root), lim
         _ = try ac.insert(try item.asSlice());
     }
     try ac.build();
-    const masked = try ac.mask(input_slice);
+    const masked = try ac.mask(.{ .text = input_slice, .max_stars = max_number_of_stars });
     defer py_allocator.free(masked);
 
     const res = py.PyBytes(root).create(masked);

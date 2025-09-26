@@ -91,19 +91,79 @@ pub const Aho = struct {
         }
     }
 
+
+
     /// Mask all patterns in the text string with the star character.
-    pub fn mask(self: *Aho, text: []const u8) ![]u8 {
-        var buf = try self.allocator.alloc(u8, text.len);
+    pub fn mask(self: *Aho, args: struct {
+        /// An input string
+        text: []const u8,
+        /// The max number of stars to mask patterns in the result.
+        max_stars: u64 = 15,
+    }) ![]u8 {
+        // Result buffer.
+        var buf = try self.allocator.alloc(u8, args.text.len);
+        // The actual buffer length.
+        var buf_len: usize = 0;
+        // A state in the trie.
         var u: usize = 0;
-        var buf_pos: usize = 0;
-        for (text) |c| {
-            buf[buf_pos] = c;
-            buf_pos += 1;
-            u = self.nodes.items[u].move[c];
-            if (self.nodes.items[u].id > 0) {
-                // Pattern found and should be masked.
-                @memset(buf[buf_pos - self.nodes.items[u].len..buf_pos], '*');
+
+        // The last found pattern is used to detect overlapping patterns.
+        // It is a position of the last character of the pattern in the input string.
+        // As this automaton always detects the leftmost-lognest pattern first we don't need
+        // to take into consideration all possible overlap casess.
+        var last_occur = struct {
+            /// A position of the last character of the pattern in the input.
+            /// -1 value means that there has not been occurrences of any patterns yet.
+            pos: isize = -1,
+            /// The pattern length.
+            len: usize = 0,
+
+            /// Return the number of characters that are out of the overlap boundary
+            /// if the given pattern occurrence is overlapping, or MAX_INT otherwise.
+            fn overlap_reminder(self_: *@This(), pos: usize, len: usize) usize {
+                if (@as(isize, @intCast(pos)) - @as(isize, @intCast(len)) < self_.pos) {
+                    return pos - @as(usize, @intCast(self_.pos));
+                }
+                return std.math.maxInt(usize);
             }
+        }{};
+
+        for (args.text, 0..) |c, pos| {
+            // Walk the automaton.
+            u = self.nodes.items[u].move[c];
+            // Copy from input character by character.
+            buf[buf_len] = c;
+            buf_len += 1;
+            // Pattern found and should be masked.
+            if (self.nodes.items[u].id > 0) {
+                // Replace the last found pattern eventually.
+                defer {
+                    last_occur.pos = @as(isize, @intCast(pos));
+                    last_occur.len = self.nodes.items[u].len;
+                }
+                // A number of characters that are out of the overlap boundary.
+                const num = last_occur.overlap_reminder(pos, self.nodes.items[u].len);
+                // Difference between the pattern length and max number of stars.
+                // If this difference is greater than 0 we need to limit the mask.
+                var diff: usize = 0;
+                if (self.nodes.items[u].len > args.max_stars) {
+                    diff = self.nodes.items[u].len - args.max_stars;
+                    diff = @min(num, diff);
+                }
+                buf_len -= diff;
+                var size = self.nodes.items[u].len - diff;
+                if (num < std.math.maxInt(usize)) {
+                    if (last_occur.len >= args.max_stars) {
+                        continue;
+                    }
+                    size = @min(num, size);
+                }
+                // Mask the pattern in the buffer.
+                @memset(buf[buf_len - size..buf_len], '*');
+            }
+        }
+        if (buf_len < args.text.len) {
+            buf = try self.allocator.realloc(buf, buf_len);
         }
         return buf;
     }
@@ -127,8 +187,19 @@ test "Aho" {
     try ac.build();
 
     const text = "her asher crashed to ash";
-    const masked = try ac.mask(text);
+    const masked = try ac.mask(.{ .text= text });
     defer allocator.free(masked);
-
     try testing.expectEqualStrings("*** ***** cr***ed to ***", masked);
+
+    const masked_limit = try ac.mask(.{ .text= text, .max_stars = 1 });
+    defer allocator.free(masked_limit);
+    try testing.expectEqualStrings("* * cr*ed to *", masked_limit);
+
+    const sanitized = try ac.mask(.{ .text= text, .max_stars = 0 });
+    defer allocator.free(sanitized);
+    try testing.expectEqualStrings("  cred to ", sanitized);
+
+    const fully_masked = try ac.mask(.{ .text = "asher" });
+    defer allocator.free(fully_masked);
+    try testing.expectEqualStrings("*****", fully_masked);
 }
