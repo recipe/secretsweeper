@@ -1,9 +1,10 @@
 import pytest
+import unittest
 
 import secretsweeper
 
 @pytest.mark.parametrize(
-    ("input", "words", "expected"),
+    ("input", "patterns", "expected"),
     [
         ("first", (), "first"), # no patterns
         ("second", ("",), "second"), # empty pattern
@@ -26,11 +27,11 @@ import secretsweeper
         ("friendship", ("end", "ship", "friend"), "**********"),
     ],
 )
-def test_mask(input: str, words: tuple[str, ...], expected: str) -> None:
-    assert secretsweeper.mask(input.encode(), tuple(w.encode() for w in words)) == expected.encode()
+def test_mask(input: str, patterns: tuple[str, ...], expected: str) -> None:
+    assert secretsweeper.mask(input.encode(), tuple(w.encode() for w in patterns)) == expected.encode()
 
 @pytest.mark.parametrize(
-    ("input", "words", "limit", "expected"),
+    ("input", "patterns", "limit", "expected"),
     [
         ("basketball", ("ball",), 2, "basket**"),
         ("smallhou\nse\n", ("hou\nse",), 2, "small**\n"),
@@ -40,27 +41,44 @@ def test_mask(input: str, words: tuple[str, ...], expected: str) -> None:
         ("seveneleven\n", ("eleven",), 6, "seven******\n"),
     ],
 )
-def test_mask_limit(input: str, words: tuple[str, ...], limit: int, expected: str) -> None:
-    assert secretsweeper.mask(input.encode(), tuple(w.encode() for w in words), limit=limit) == expected.encode()
+def test_mask_limit(input: str, patterns: tuple[str, ...], limit: int, expected: str) -> None:
+    assert secretsweeper.mask(input.encode(), tuple(w.encode() for w in patterns), limit=limit) == expected.encode()
 
 @pytest.mark.parametrize(
-    ("input", "words", "expected"),
+    ("input", "patterns", "expected"),
     [
         ("", ("",), ""),
         ("this is a [secret]", ("secret",), "this is a []"),
         ("fetch fresh fishes", ("sh",), "fetch fre fies"),
     ],
 )
-def test_sanitize(input: str, words: tuple[str, ...], expected: str) -> None:
-    assert secretsweeper.mask(input.encode(), tuple(w.encode() for w in words), limit=0) == expected.encode()
+def test_sanitize(input: str, patterns: tuple[str, ...], expected: str) -> None:
+    assert secretsweeper.mask(input.encode(), tuple(w.encode() for w in patterns), limit=0) == expected.encode()
 
 @pytest.mark.parametrize(
-    ("input", "words", "expected"),
+    ("input", "patterns", "expected"),
     [
         # Multi-byte characters are replaced with 2-4 asterisks.
         ("давай", ("да",), "****вай"),
         ("тримай", ("май", "три"), "************"),
     ],
 )
-def test_mask_utf8(input: str, words: tuple[str, ...], expected: str) -> None:
-    assert secretsweeper.mask(input.encode(), tuple(w.encode("utf8") for w in words)) == expected.encode()
+def test_mask_utf8(input: str, patterns: tuple[str, ...], expected: str) -> None:
+    assert secretsweeper.mask(input.encode(), tuple(w.encode("utf8") for w in patterns)) == expected.encode()
+
+
+class InvalidInputTest(unittest.TestCase):
+    def test_mask_error_input(self) -> None:
+        with self.assertRaises(TypeError) as ex:
+            secretsweeper.mask(0, ())
+        self.assertIn("expected bytes, found <class 'int'>", str(ex.exception))
+
+    def test_mask_error_patterns(self) -> None:
+        with self.assertRaises(TypeError) as ex:
+            secretsweeper.mask(b"", -1)
+        self.assertIn("expected tuple, found <class 'int'>", str(ex.exception))
+
+        with self.assertRaises(TypeError) as ex:
+            # TODO think of accepting any iterable.
+            secretsweeper.mask(b"", [])
+        self.assertIn("expected tuple, found <class 'list'>", str(ex.exception))

@@ -1,6 +1,6 @@
 # Secretsweeper
 
-Secretsweeper is a fast, in-memory secret-sanitizing C-Python module written in Zig, designed for speed.
+Secretsweeper is a fast, in-memory secret-sanitizing Python module written in Zig, designed for speed.
 
 ```shell 
 » python          

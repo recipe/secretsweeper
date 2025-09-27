@@ -120,7 +120,7 @@ pub const Aho = struct {
 
             /// Return the number of characters that are out of the overlap boundary
             /// if the given pattern occurrence is overlapping, or MAX_INT otherwise.
-            fn overlap_reminder(self_: *@This(), pos: usize, len: usize) usize {
+            fn overlapReminder(self_: *@This(), pos: usize, len: usize) usize {
                 if (@as(isize, @intCast(pos)) - @as(isize, @intCast(len)) < self_.pos) {
                     return pos - @as(usize, @intCast(self_.pos));
                 }
@@ -142,7 +142,7 @@ pub const Aho = struct {
                     last_occur.len = self.nodes.items[u].len;
                 }
                 // A number of characters that are out of the overlap boundary.
-                const num = last_occur.overlap_reminder(pos, self.nodes.items[u].len);
+                const num = last_occur.overlapReminder(pos, self.nodes.items[u].len);
                 // Difference between the pattern length and max number of stars.
                 // If this difference is greater than 0 we need to limit the mask.
                 var diff: usize = 0;
