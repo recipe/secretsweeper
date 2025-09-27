@@ -109,7 +109,7 @@ def _generator():
     [
         (b"a",),  # it can be a tuple
         [b"a"],  # it can be a list
-        (b"a" for i in range(0, 1)),  # it can be a genexpression
+        (b"a" for i in range(0, 1)),  # it can be a generator expression
         _generator(),
     ],
 )

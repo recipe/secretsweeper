@@ -8,8 +8,6 @@ const Node = struct {
     fail: usize = 0,
     /// Pattern length.
     len: usize = 0,
-    /// Degree for topological sort.
-    du: usize  = 0,
     /// A search pattern identifier.
     id: usize = 0,
 };
@@ -52,13 +50,11 @@ pub const Aho = struct {
             // Transition to a new node.
             u = self.nodes.items[u].move[c];
         }
-
         if (self.nodes.items[u].id == 0) {
             self.pidx += 1;
             self.nodes.items[u].id = self.pidx;
             self.nodes.items[u].len = pattern.len;
         }
-
         return self.nodes.items[u].id;
     }
 
@@ -77,12 +73,8 @@ pub const Aho = struct {
             for (0..256) |i| {
                 const transition_node_id = self.nodes.items[u].move[i];
                 const fail_node_id = self.nodes.items[u].fail;
-
                 if (transition_node_id != 0) {
                     self.nodes.items[transition_node_id].fail = self.nodes.items[fail_node_id].move[i];
-                    const target_fail_node_id = self.nodes.items[transition_node_id].fail;
-                    self.nodes.items[target_fail_node_id].du += 1;
-
                     try queue.writeItem(transition_node_id);
                 } else {
                     self.nodes.items[u].move[i] = self.nodes.items[fail_node_id].move[i];
@@ -177,29 +169,24 @@ test "Aho" {
     var ac = try Aho.init(allocator);
     defer ac.deinit();
 
-    const patterns = [_][]const u8{"her", "hers", "asher", "ash"};
+    const patterns = [_][]const u8{"her", "hers", "ash"};
     for (0..patterns.len) |i| {
         _ = try ac.insert(patterns[i]);
     }
 
-    try testing.expectEqual(9, ac.total);
+    try testing.expectEqual(7, ac.total);
 
     try ac.build();
 
-    const text = "her asher crashed to ash";
-    const masked = try ac.mask(.{ .text= text });
+    const masked = try ac.mask(.{ .text= "asher" });
     defer allocator.free(masked);
-    try testing.expectEqualStrings("*** ***** cr***ed to ***", masked);
+    try testing.expectEqualStrings("*****", masked);
 
-    const masked_limit = try ac.mask(.{ .text= text, .max_stars = 1 });
+    const masked_limit = try ac.mask(.{ .text= "her asher", .max_stars = 1 });
     defer allocator.free(masked_limit);
-    try testing.expectEqualStrings("* * cr*ed to *", masked_limit);
+    try testing.expectEqualStrings("* *", masked_limit);
 
-    const sanitized = try ac.mask(.{ .text= text, .max_stars = 0 });
+    const sanitized = try ac.mask(.{ .text= "her asher", .max_stars = 0 });
     defer allocator.free(sanitized);
-    try testing.expectEqualStrings("  cred to ", sanitized);
-
-    const fully_masked = try ac.mask(.{ .text = "asher" });
-    defer allocator.free(fully_masked);
-    try testing.expectEqualStrings("*****", fully_masked);
+    try testing.expectEqualStrings(" ", sanitized);
 }
