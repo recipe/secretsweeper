@@ -5,6 +5,10 @@ import typing
 import secretsweeper
 
 
+def _generator() -> typing.Generator[bytes, None, None]:
+    yield b"a"
+
+
 @pytest.mark.parametrize(
     ("input", "patterns", "expected"),
     [
@@ -100,15 +104,13 @@ def test_mask_utf8(input: str, patterns: typing.Iterable[str], expected: str) ->
     )
 
 
-def _generator():
-    yield b"a"
-
-
 @pytest.mark.parametrize(
     ("patterns"),
     [
         (b"a",),  # it can be a tuple
         [b"a"],  # it can be a list
+        {b"a"},  # it can be a set
+        {b"a": typing.Any},  # it can be a dict
         (b"a" for i in range(0, 1)),  # it can be a generator expression
         _generator(),
     ],
