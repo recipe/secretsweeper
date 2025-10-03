@@ -1,5 +1,11 @@
 import typing
 
+class StreamWrapper:
+    """
+    The StreamWrapper wraps an io.BytesIO stream to mask or remove secrets while reading from it.
+    """
+    ...
+
 def mask(input: bytes, patterns: typing.Iterable[bytes], /, *, limit: int = 15) -> bytes:
     """
     Masks the specific patterns in the input.
@@ -10,4 +16,3 @@ def mask(input: bytes, patterns: typing.Iterable[bytes], /, *, limit: int = 15) 
     :return Returns the input string with masked patterns.
     """
     ...
-
