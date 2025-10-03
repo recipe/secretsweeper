@@ -1,37 +1,42 @@
-[project]
-name = "secretsweeper"
-version = "0.1.0"
-description = "Fast in memory secrets sanitizing C-Python module."
-readme = "README.md"
-requires-python = ">=3.11"
-dependencies = []
-
-[dependency-groups]
-dev = [
-    "faker>=37.8.0",
-    "poetry>=2.1.4",
-    "pytest>=8.4.2",
-    "ruff>=0.13.2",
-    "ziggy-pydust>=0.25.1",
-]
+[build-system]
+requires = ["poetry-core", "ziggy-pydust==0.25.1"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-packages = [ { include = "secretsweeper" } ]
+name = "secretsweeper"
+version = "0.1.0"
+description = "Fast, in-memory secret-sanitizing CPython module written in Zig, designed for speed."
+authors = ["Vitaliy Demidov <notifications.recipient@gmail.com>"]
+readme = "README.md"
+packages = [{ include = "secretsweeper" }]
 include = [
     { path = "src/", format = "sdist" },
     { path = "secretsweeper/*.so", format = "wheel" },
+    "secretsweeper/*.pyi"
 ]
 
 [tool.poetry.build]
 script = "build.py"
 
-[build-system]
-requires = ["poetry-core", "ziggy-pydust==0.25.1"]
-build-backend = "poetry.core.masonry.api"
+[tool.poetry.dependencies]
+python = "^3.11"
+
+[tool.poetry.group.dev.dependencies]
+ziggy-pydust = "0.25.1"
+ruff = "^0.13.2"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "UP", "I001", "I002"]
 
 [[tool.pydust.ext_module]]
 name = "secretsweeper._core"
 root = "src/core.zig"
 
-[tool.ruff]
-select = ["ANN"]  # enable typing-related rules
+[dependency-groups]
+dev = [
+    "poetry>=2.2.1",
+    "pytest (>=8.4.2,<9.0.0)"
+]
