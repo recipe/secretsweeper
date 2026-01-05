@@ -22,9 +22,9 @@ pub const Aho = struct {
     total: usize,
 
     pub fn init(allocator: std.mem.Allocator) !Aho {
-        var nodes= std.ArrayList(Node).init(allocator);
+        var nodes= try std.ArrayList(Node).initCapacity(allocator, 0);
         // Root node
-        try nodes.append(Node{});
+        try nodes.append(allocator, Node{});
         return Aho{
             .allocator = allocator,
             .nodes = nodes,
@@ -34,7 +34,7 @@ pub const Aho = struct {
     }
 
     pub fn deinit(self: *Aho) void {
-        self.nodes.deinit();
+        self.nodes.deinit(self.allocator);
     }
 
     /// Inserts a new pattern and returns its unique identifier.
@@ -44,7 +44,7 @@ pub const Aho = struct {
             if (self.nodes.items[u].move[c] == 0) {
                 // Insert a new node to a trie.
                 self.total += 1;
-                try self.nodes.append(Node{});
+                try self.nodes.append(self.allocator, Node{});
                 self.nodes.items[u].move[c] = self.total;
             }
             // Transition to a new node.
@@ -58,24 +58,27 @@ pub const Aho = struct {
         return self.nodes.items[u].id;
     }
 
-    /// Build the goto and fail functions.
+    /// Build goto and fail functions.
     pub fn build(self: *Aho) !void {
-        var queue = std.fifo.LinearFifo(usize, .Dynamic).init(self.allocator);
-        defer queue.deinit();
+        var queue = try std.ArrayList(usize).initCapacity(self.allocator, 0);
+        defer queue.deinit(self.allocator);
 
         for (0..256) |i| {
             if (self.nodes.items[0].move[i] != 0) {
-                try queue.writeItem(self.nodes.items[0].move[i]);
+                try queue.append(self.allocator, self.nodes.items[0].move[i]);
             }
         }
 
-        while (queue.readItem()) |u| {
+        var head: usize = 0;
+        while (head < queue.items.len) {
+            const u = queue.items[head];
+            head += 1;
             for (0..256) |i| {
                 const transition_node_id = self.nodes.items[u].move[i];
                 const fail_node_id = self.nodes.items[u].fail;
                 if (transition_node_id != 0) {
                     self.nodes.items[transition_node_id].fail = self.nodes.items[fail_node_id].move[i];
-                    try queue.writeItem(transition_node_id);
+                    try queue.append(self.allocator, transition_node_id);
                 } else {
                     self.nodes.items[u].move[i] = self.nodes.items[fail_node_id].move[i];
                 }
@@ -87,7 +90,7 @@ pub const Aho = struct {
 
     /// Mask all patterns in the text string with the star character.
     pub fn mask(self: *Aho, args: struct {
-        /// An input string
+        /// An input string.
         text: []const u8,
         /// The max number of stars to mask patterns in the result.
         max_stars: u64 = 15,
@@ -101,17 +104,17 @@ pub const Aho = struct {
 
         // The last found pattern is used to detect overlapping patterns.
         // It is a position of the last character of the pattern in the input string.
-        // As this automaton always detects the leftmost-lognest pattern first we don't need
-        // to take into consideration all possible overlap casess.
+        // As this automaton always detects the leftmost-longest pattern first we don't need
+        // to take into consideration all possible overlap cases.
         var last_occur = struct {
-            /// A position of the last character of the pattern in the input.
-            /// -1 value means that there has not been occurrences of any patterns yet.
+            /// The position of the last character of the pattern in the input.
+            /// A value of -1 means that no occurrences of any pattern have been found yet.
             pos: isize = -1,
             /// The pattern length.
             len: usize = 0,
 
-            /// Return the number of characters that are out of the overlap boundary
-            /// if the given pattern occurrence is overlapping, or MAX_INT otherwise.
+            /// Returns the number of characters outside the overlap boundary
+            /// if the given pattern occurrence overlaps, or MAX_INT otherwise.
             fn overlapReminder(self_: *@This(), pos: usize, len: usize) usize {
                 if (@as(isize, @intCast(pos)) - @as(isize, @intCast(len)) < self_.pos) {
                     return pos - @as(usize, @intCast(self_.pos));

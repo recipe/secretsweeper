@@ -5,7 +5,7 @@ const root = @This();
 const py_allocator = py.allocator;
 const Aho = @import("aho.zig").Aho;
 
-/// The default value of the max number of consecutive masking characers.
+/// The default value of the max number of consecutive masking characters.
 const MAX_NUMBER_OF_STARS = 15;
 
 pub const StreamWrapper = py.class(struct {
@@ -20,14 +20,14 @@ pub const StreamWrapper = py.class(struct {
 });
 
 /// Masks specific patterns in the input string with the asterisks.
-pub fn mask(args: struct { input: py.PyBytes(root), patterns: py.PyObject(root), limit: u64 = MAX_NUMBER_OF_STARS }) !py.PyBytes(root) {
+pub fn mask(args: struct { input: py.PyBytes, patterns: py.PyObject, limit: u64 = MAX_NUMBER_OF_STARS }) !py.PyBytes {
     const max_number_of_stars = args.limit;
 
     var ac = try Aho.init(py_allocator);
     defer ac.deinit();
 
     const iterator = try py.iter(root, args.patterns);
-    while (try iterator.next(py.PyBytes(root))) |item| {
+    while (try iterator.next(py.PyBytes)) |item| {
         _ = try ac.insert(try item.asSlice());
     }
 
@@ -35,7 +35,7 @@ pub fn mask(args: struct { input: py.PyBytes(root), patterns: py.PyObject(root),
     const masked = try ac.mask(.{ .text = try args.input.asSlice(), .max_stars = max_number_of_stars });
     defer py_allocator.free(masked);
 
-    const res = try py.PyBytes(root).create(masked);
+    const res = try py.PyBytes.create(masked);
     return res;
 }
 
