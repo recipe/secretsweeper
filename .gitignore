@@ -18,3 +18,5 @@ wheels/
 /zig-out
 /.zig-cache
 *.so
+/build.zig
+/pydust.build.zig
