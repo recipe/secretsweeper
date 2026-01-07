@@ -1,6 +1,7 @@
 import pytest
 import unittest
 import typing
+import pathlib
 
 import secretsweeper
 
@@ -92,7 +93,7 @@ def test_sanitize(input: str, patterns: typing.Iterable[str], expected: str) -> 
 @pytest.mark.parametrize(
     ("input", "patterns", "expected"),
     [
-        # Multi-byte characters are replaced with 2-4 asterisks.
+        # Multibyte characters are replaced with 2-4 asterisks.
         ("давай", ("да",), "****вай"),
         ("тримай", ("май", "три"), "************"),
     ],
@@ -117,6 +118,34 @@ def test_mask_utf8(input: str, patterns: typing.Iterable[str], expected: str) ->
 )
 def test_mask_pattern_type(patterns: typing.Iterable[bytes]) -> None:
     assert secretsweeper.mask(b"a", patterns) == b"*"
+
+
+
+def test_stream_wrapper_init_and_del() -> None:
+    wrapper = secretsweeper._core._StreamWrapper((b"a", b"b"))
+    wrapper2 = secretsweeper._core._StreamWrapper((b"a", b"b"))
+    assert isinstance(wrapper, secretsweeper._core._StreamWrapper)
+    assert isinstance(wrapper2, secretsweeper._core._StreamWrapper)
+    assert id(wrapper) == wrapper._id()
+    assert id(wrapper2) == wrapper2._id()
+    assert id(wrapper) != id(wrapper2)
+    del wrapper
+    del wrapper2
+
+
+def test_stream_wrapper_iter() -> None:
+    chunk = []
+    with open(pathlib.Path(__file__).parent / "fixtures" / "file.txt", "rb") as f:
+        stream = secretsweeper.StreamWrapper(f, (b"line",))
+        for line in stream:
+            chunk.append(line)
+    assert b"".join(chunk) == b"first ****\nsecond ****\nthird ****\n"
+
+def test_stream_wrapper_readall() -> None:
+    with open(pathlib.Path(__file__).parent / "fixtures" / "file.txt", "rb") as f:
+        stream = secretsweeper.StreamWrapper(f, (b"line",))
+        result = stream.readall()
+    assert result == b"first ****\nsecond ****\nthird ****\n"
 
 
 class InvalidInputTest(unittest.TestCase):
