@@ -40,6 +40,11 @@ pub const Aho = struct {
             return std.math.maxInt(usize);
         }
     },
+    /// In the streaming mode it may hold a reminder of the previous line that should be taken into consideration
+    /// in the consecutive call.
+    reminder: ?[]u8,
+    /// The most recent position in the input where the automaton was in the starting state.
+    last_starting_state_pos: isize = -1,
 
     pub fn init(allocator: std.mem.Allocator) !Aho {
         var nodes= try std.ArrayList(Node).initCapacity(allocator, 0);
@@ -51,10 +56,19 @@ pub const Aho = struct {
             .pidx = 0,
             .total = 0,
             .last_occur = .{},
+            .reminder = null,
         };
     }
 
+    pub fn reset_reminder(self: *Aho) void {
+        if (self.reminder) |reminder| {
+            self.allocator.free(reminder);
+            self.reminder = null;
+        }
+    }
+
     pub fn deinit(self: *Aho) void {
+        self.reset_reminder();
         self.nodes.deinit(self.allocator);
     }
 
@@ -118,19 +132,35 @@ pub const Aho = struct {
         text: []const u8,
         /// The max number of stars to mask patterns in the result.
         max_stars: u64 = 15,
+        /// In streaming mode, incomplete patterns at the end of the input are buffered and processed on the next call.
+        /// The function does not process the entire text at once if an incomplete pattern is found at the end
+        /// of the input. Instead, it saves the remainder in its internal state and uses it in the next call,
+        /// treating the input as a continuation of the previous one.
+        is_streaming: bool = false,
     }) ![]u8 {
+        self.last_starting_state_pos = 0;
+        // Resetting the last occurrence of the found pattern.
+        self.last_occur = .{};
+        if (!args.is_streaming) {
+            self.reset_reminder();
+        }
+        const reminder_len = (self.reminder orelse "").len;
+        const input_len = reminder_len + args.text.len;
         // Result buffer.
-        var buf = try self.allocator.alloc(u8, args.text.len);
+        var buf = try self.allocator.alloc(u8, reminder_len + args.text.len);
         // The actual buffer length.
         var buf_len: usize = 0;
         // A state in the trie.
         var u: usize = 0;
-        // Resetting the last occurrence of the found pattern.
-        self.last_occur = .{};
-
-        for (args.text, 0..) |c, pos| {
+        // Position in the input, taking into account the remainder.
+        var pos: usize = 0;
+        while (pos < input_len): (pos += 1) {
+            const c = if (pos < reminder_len) self.reminder.?[pos] else args.text[pos - reminder_len];
             // Walk the automaton.
             u = self.nodes.items[u].move[c];
+            if (u == 0) {
+                self.last_starting_state_pos = @intCast(pos);
+            }
             // Copy from input character by character.
             buf[buf_len] = c;
             buf_len += 1;
@@ -138,7 +168,7 @@ pub const Aho = struct {
             if (self.nodes.items[u].id > 0) {
                 // Replace the last found pattern eventually.
                 defer {
-                    self.last_occur.pos = @as(isize, @intCast(pos));
+                    self.last_occur.pos = @intCast(pos);
                     self.last_occur.len = self.nodes.items[u].len;
                 }
                 // A number of characters that are out of the overlap boundary.
@@ -162,8 +192,14 @@ pub const Aho = struct {
                 @memset(buf[buf_len - size..buf_len], '*');
             }
         }
-        if (buf_len < args.text.len) {
-            buf = try self.allocator.realloc(buf, buf_len);
+        var new_reminder_len: usize = 0;
+        if (args.is_streaming and self.last_starting_state_pos < input_len) {
+            new_reminder_len = @intCast(@as(isize, @intCast(input_len)) - self.last_starting_state_pos - 1);
+            self.reminder = try self.allocator.alloc(u8, new_reminder_len);
+            @memcpy(self.reminder.?, buf[buf_len - new_reminder_len..buf_len]);
+        }
+        if (buf_len < input_len or new_reminder_len > 0) {
+            buf = try self.allocator.realloc(buf, buf_len - new_reminder_len);
         }
         return buf;
     }

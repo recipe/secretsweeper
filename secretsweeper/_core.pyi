@@ -13,12 +13,18 @@ class _StreamWrapper:
         """
     ...
 
-    def _wrapped_read(self, carry: bytes) -> bytes:
+    def mask(self, carry: bytes) -> bytes:
         """
         Read data from the carry buffer and apply pattern masking.
 
         :param carry: A chunk buffer that needs to be masked with the `*` asterisk character.
         :return: Returns the input string with masked patterns.
+        """
+        ...
+
+    def get_reminder(self) -> bytes:
+        """
+        :return: Consumes the reminder or return empty bytes.
         """
         ...
 

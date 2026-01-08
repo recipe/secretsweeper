@@ -147,6 +147,21 @@ def test_stream_wrapper_readall() -> None:
         result = stream.readall()
     assert result == b"first ****\nsecond ****\nthird ****\n"
 
+@pytest.mark.parametrize(
+    ("patterns", "expected"),
+    [
+        ((b"line\nthird",), b"first line\nsecond ********** line\n"),
+    ],
+)
+def test_stream_wrapper(patterns: typing.Iterable[bytes], expected: bytes) -> None:
+    chunk = []
+    with open(pathlib.Path(__file__).parent / "fixtures" / "file.txt", "rb") as f:
+        stream = secretsweeper.StreamWrapper(f, patterns)
+        for line in stream:
+            chunk.append(line)
+    assert b"".join(chunk) == expected
+
+
 
 class InvalidInputTest(unittest.TestCase):
     def test_mask_error_input(self) -> None:

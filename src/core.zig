@@ -52,13 +52,24 @@ pub const _StreamWrapper = py.class(struct {
     }
 
     /// Read data from the carry buffer and apply pattern masking.
-    pub fn _wrapped_read(self: *Self, args: struct { carry: py.PyBytes }) !py.PyBytes {
-        // TODO. Not Implemented Yet! We need to handle cases for the multiline patterns here.
+    pub fn mask(self: *Self, args: struct { carry: py.PyBytes }) !py.PyBytes {
         const ac = aho_map.get(self._id()).?;
-        const masked = try ac.*.mask(.{ .text = try args.carry.asSlice(), .max_stars = self.limit });
+        const masked = try ac.*.mask(.{
+            .text = try args.carry.asSlice(),
+            .max_stars = self.limit,
+            .is_streaming = true,
+        });
         defer py_allocator.free(masked);
         const res = try py.PyBytes.create(masked);
         return res;
+    }
+
+    /// Returns the reminder value
+    pub fn get_reminder(self: *Self) !py.PyBytes {
+        const ac = aho_map.get(self._id()).?;
+        const reminder = ac.*.reminder orelse "";
+        defer ac.*.reset_reminder();
+        return try py.PyBytes.create(reminder);
     }
 });
 

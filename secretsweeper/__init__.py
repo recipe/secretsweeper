@@ -30,14 +30,14 @@ class StreamWrapper(io.RawIOBase):
         """
         carry = self._stream.read(size)
         if not carry:
-            return b""
-        return self._wrapper._wrapped_read(carry)
+            return self._wrapper.get_reminder()
+        return self._wrapper.mask(carry)
 
     def readline(self, size: int | None = -1, /) -> bytes:
         carry = self._stream.readline(size)
         if not carry:
-            return b""
-        return self._wrapper._wrapped_read(carry)
+            return self._wrapper.get_reminder()
+        return self._wrapper.mask(carry)
 
 
     def readable(self) -> bool:
