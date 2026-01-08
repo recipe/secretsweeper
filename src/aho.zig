@@ -20,6 +20,26 @@ pub const Aho = struct {
     pidx: usize,
     /// The total number of nodes.
     total: usize,
+    /// The last found pattern is used to detect overlapping patterns.
+    /// It is a position of the last character of the pattern in the input string.
+    /// As this automaton always detects the leftmost-longest pattern first we don't need
+    /// to take into consideration all possible overlap cases.
+    last_occur: struct {
+        /// The position of the last character of the pattern in the input.
+        /// A value of -1 means that no occurrences of any pattern have been found yet.
+        pos: isize = -1,
+        /// The pattern length.
+        len: usize = 0,
+
+        /// Returns the number of characters outside the overlap boundary
+        /// if the given pattern occurrence overlaps, or MAX_INT otherwise.
+        fn overlapReminder(self_: *@This(), pos: usize, len: usize) usize {
+            if (@as(isize, @intCast(pos)) - @as(isize, @intCast(len)) < self_.pos) {
+                return pos - @as(usize, @intCast(self_.pos));
+            }
+            return std.math.maxInt(usize);
+        }
+    },
 
     pub fn init(allocator: std.mem.Allocator) !Aho {
         var nodes= try std.ArrayList(Node).initCapacity(allocator, 0);
@@ -30,6 +50,7 @@ pub const Aho = struct {
             .nodes = nodes,
             .pidx = 0,
             .total = 0,
+            .last_occur = .{},
         };
     }
 
@@ -38,7 +59,12 @@ pub const Aho = struct {
     }
 
     /// Inserts a new pattern and returns its unique identifier.
-    pub fn insert(self: *Aho, pattern: []const u8) !usize {
+    /// Empty pattern is ignored. In this case function returns null.
+    pub fn insert(self: *Aho, pattern: []const u8) !?usize {
+        if (pattern.len == 0) {
+            // Ignore empty patterns.
+            return null;
+        }
         var u: usize = 0;
         for (pattern) |c| {
             if (self.nodes.items[u].move[c] == 0) {
@@ -86,8 +112,6 @@ pub const Aho = struct {
         }
     }
 
-
-
     /// Mask all patterns in the text string with the star character.
     pub fn mask(self: *Aho, args: struct {
         /// An input string.
@@ -101,27 +125,8 @@ pub const Aho = struct {
         var buf_len: usize = 0;
         // A state in the trie.
         var u: usize = 0;
-
-        // The last found pattern is used to detect overlapping patterns.
-        // It is a position of the last character of the pattern in the input string.
-        // As this automaton always detects the leftmost-longest pattern first we don't need
-        // to take into consideration all possible overlap cases.
-        var last_occur = struct {
-            /// The position of the last character of the pattern in the input.
-            /// A value of -1 means that no occurrences of any pattern have been found yet.
-            pos: isize = -1,
-            /// The pattern length.
-            len: usize = 0,
-
-            /// Returns the number of characters outside the overlap boundary
-            /// if the given pattern occurrence overlaps, or MAX_INT otherwise.
-            fn overlapReminder(self_: *@This(), pos: usize, len: usize) usize {
-                if (@as(isize, @intCast(pos)) - @as(isize, @intCast(len)) < self_.pos) {
-                    return pos - @as(usize, @intCast(self_.pos));
-                }
-                return std.math.maxInt(usize);
-            }
-        }{};
+        // Resetting the last occurrence of the found pattern.
+        self.last_occur = .{};
 
         for (args.text, 0..) |c, pos| {
             // Walk the automaton.
@@ -133,11 +138,11 @@ pub const Aho = struct {
             if (self.nodes.items[u].id > 0) {
                 // Replace the last found pattern eventually.
                 defer {
-                    last_occur.pos = @as(isize, @intCast(pos));
-                    last_occur.len = self.nodes.items[u].len;
+                    self.last_occur.pos = @as(isize, @intCast(pos));
+                    self.last_occur.len = self.nodes.items[u].len;
                 }
                 // A number of characters that are out of the overlap boundary.
-                const num = last_occur.overlapReminder(pos, self.nodes.items[u].len);
+                const num = self.last_occur.overlapReminder(pos, self.nodes.items[u].len);
                 // Difference between the pattern length and max number of stars.
                 // If this difference is greater than 0 we need to limit the mask.
                 var diff: usize = 0;
@@ -148,7 +153,7 @@ pub const Aho = struct {
                 buf_len -= diff;
                 var size = self.nodes.items[u].len - diff;
                 if (num < std.math.maxInt(usize)) {
-                    if (last_occur.len >= args.max_stars) {
+                    if (self.last_occur.len >= args.max_stars) {
                         continue;
                     }
                     size = @min(num, size);
