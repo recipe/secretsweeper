@@ -13,7 +13,7 @@ class _StreamWrapper:
         """
     ...
 
-    def mask(self, carry: bytes) -> bytes:
+    def masking_read(self, carry: bytes) -> bytes:
         """
         Read data from the carry buffer and apply pattern masking.
 
@@ -22,9 +22,9 @@ class _StreamWrapper:
         """
         ...
 
-    def get_reminder(self) -> bytes:
+    def consume_reminder(self) -> bytes:
         """
-        :return: Consumes the reminder or return empty bytes.
+        :return: Consumes the reminder or return empty bytes it there is no reminder. Then reset its value.
         """
         ...
 

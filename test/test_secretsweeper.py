@@ -64,6 +64,7 @@ def test_mask(input: str, patterns: typing.Iterable[str], expected: str) -> None
         ("thiswasfunny\n", ("funny",), 6, "thiswas*****\n"),
         ("fivesix\n", ("six\n",), 0, "five"),
         ("seveneleven\n", ("eleven",), 6, "seven******\n"),
+        ("line\nsecond line\n", ("ne\nsec", "second"), 6, "li****** line\n"), # overlapping patterns + max size
     ],
 )
 def test_mask_limit(
@@ -148,15 +149,21 @@ def test_stream_wrapper_readall() -> None:
     assert result == b"first ****\nsecond ****\nthird ****\n"
 
 @pytest.mark.parametrize(
-    ("patterns", "expected"),
+    ("fixture_file","patterns", "expected", "limit"),
     [
-        ((b"line\nthird",), b"first line\nsecond ********** line\n"),
+        ("file", (b"line\nthird",), b"first line\nsecond ********** line\n", None),
+        # overlapping multiline pattern.
+        ("file", (b"ne\nse", b"second"), b"first li*** line\nthird line\n", 3),
+        # overlapping less than limit.
+        ("file-cr-lf", (b"ne\r\nse", b"second"), b"first li**** line\r\nthird line\r\n", 4),
     ],
 )
-def test_stream_wrapper(patterns: typing.Iterable[bytes], expected: bytes) -> None:
+def test_stream_wrapper(fixture_file: str, patterns: typing.Iterable[bytes], expected: bytes, limit: None | int) -> None:
+    if limit is None:
+        limit = secretsweeper.MAX_NUMBER_OF_STARS
     chunk = []
-    with open(pathlib.Path(__file__).parent / "fixtures" / "file.txt", "rb") as f:
-        stream = secretsweeper.StreamWrapper(f, patterns)
+    with open(pathlib.Path(__file__).parent / "fixtures" / f"{fixture_file}.txt", "rb") as f:
+        stream = secretsweeper.StreamWrapper(f, patterns, limit=limit)
         for line in stream:
             chunk.append(line)
     assert b"".join(chunk) == expected
@@ -166,10 +173,10 @@ def test_stream_wrapper(patterns: typing.Iterable[bytes], expected: bytes) -> No
 class InvalidInputTest(unittest.TestCase):
     def test_mask_error_input(self) -> None:
         with self.assertRaises(TypeError) as ex:
-            secretsweeper.mask(0, ())
+            secretsweeper.mask(0, ()) # type: ignore
         self.assertIn("expected bytes, found <class 'int'>", str(ex.exception))
 
     def test_mask_error_patterns(self) -> None:
         with self.assertRaises(TypeError) as ex:
-            secretsweeper.mask(b"", -1)
+            secretsweeper.mask(b"", -1) # type: ignore
         self.assertIn("'int' object is not iterable", str(ex.exception))

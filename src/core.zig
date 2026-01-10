@@ -6,7 +6,7 @@ const py_allocator = py.allocator;
 const Aho = @import("aho.zig").Aho;
 
 /// The default value of the max number of consecutive masking characters.
-const MAX_NUMBER_OF_STARS = 15;
+pub const MAX_NUMBER_OF_STARS = 15;
 
 /// Aho-Corasick automaton container.
 var aho_map: std.AutoHashMap(usize, *Aho) = .init(py_allocator);
@@ -52,7 +52,7 @@ pub const _StreamWrapper = py.class(struct {
     }
 
     /// Read data from the carry buffer and apply pattern masking.
-    pub fn mask(self: *Self, args: struct { carry: py.PyBytes }) !py.PyBytes {
+    pub fn masking_read(self: *Self, args: struct { carry: py.PyBytes }) !py.PyBytes {
         const ac = aho_map.get(self._id()).?;
         const masked = try ac.*.mask(.{
             .text = try args.carry.asSlice(),
@@ -64,11 +64,17 @@ pub const _StreamWrapper = py.class(struct {
         return res;
     }
 
-    /// Returns the reminder value
+    /// Return the reminder value and reset it.
+    pub fn consume_reminder(self: *Self) !py.PyBytes {
+        const ac = aho_map.get(self._id()).?;
+        defer ac.*.reset_reminder();
+        return self.get_reminder();
+    }
+
+    /// Get the value of the reminder.
     pub fn get_reminder(self: *Self) !py.PyBytes {
         const ac = aho_map.get(self._id()).?;
         const reminder = ac.*.reminder orelse "";
-        defer ac.*.reset_reminder();
         return try py.PyBytes.create(reminder);
     }
 });

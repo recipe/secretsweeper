@@ -2,10 +2,10 @@ import typing
 import io
 from ._core import *
 
+MAX_NUMBER_OF_STARS = 15
+
 class StreamWrapper(io.RawIOBase):
-    """
-    The StreamWrapper wraps an io.BytesIO stream to mask or remove secrets while reading from it.
-    """
+    """The StreamWrapper wraps an io.BytesIO stream to mask or remove secrets while reading from it."""
 
     def __init__(self, stream: typing.IO[bytes], patterns: typing.Iterable[bytes], /, *, limit: int = 15):
         """
@@ -22,6 +22,9 @@ class StreamWrapper(io.RawIOBase):
         """
         Read up to size bytes from the object and return them.
 
+        All found patterns are masked. If a starting part of some multiline pattern appears at the end of line
+        the method may move it to the beginning of the next line.
+
         :param size: A number of bytes to read. As a convenience, if size is unspecified or -1,
         all bytes until EOF are returned. Otherwise, only one system call is ever made.
         Fewer than size bytes may be returned if the operating system call returns fewer than size bytes.
@@ -30,15 +33,33 @@ class StreamWrapper(io.RawIOBase):
         """
         carry = self._stream.read(size)
         if not carry:
-            return self._wrapper.get_reminder()
-        return self._wrapper.mask(carry)
+            return self._wrapper.consume_reminder()
+        return self._wrapper.masking_read(carry)
 
     def readline(self, size: int | None = -1, /) -> bytes:
+        """
+        Read and return one line from the stream.
+
+        All found patterns are masked. If a starting part of some multiline pattern appears at the end of line
+        the method may move it to the beginning of the next line.
+
+        :param size: If size is specified, at most size bytes will be read.
+        :return: The line terminator is always b'\n' for binary files.
+        """
         carry = self._stream.readline(size)
         if not carry:
-            return self._wrapper.get_reminder()
-        return self._wrapper.mask(carry)
+            return self._wrapper.consume_reminder()
+        return self._wrapper.masking_read(carry)
 
+
+    def seekable(self):
+        """This stream does not support seek operations."""
+        return False
 
     def readable(self) -> bool:
+        """This stream is readable."""
         return True
+
+    def writable(self) -> bool:
+        """This stream does not support writing."""
+        return False
