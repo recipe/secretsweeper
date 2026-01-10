@@ -1,13 +1,17 @@
-import typing
 import io
-from ._core import *
+import typing
+
+from ._core import *  # noqa: F403
 
 MAX_NUMBER_OF_STARS = 15
+
 
 class StreamWrapper(io.RawIOBase):
     """The StreamWrapper wraps an io.BytesIO stream to mask or remove secrets while reading from it."""
 
-    def __init__(self, stream: typing.IO[bytes], patterns: typing.Iterable[bytes], /, *, limit: int = 15):
+    def __init__(
+        self, stream: typing.IO[bytes], patterns: typing.Iterable[bytes], /, *, limit: int = MAX_NUMBER_OF_STARS
+    ):
         """
         The StreamWrapper class constructor.
 
@@ -16,7 +20,7 @@ class StreamWrapper(io.RawIOBase):
         :param limit: The max number of consecutive stars.
         """
         self._stream = stream
-        self._wrapper = _core._StreamWrapper(patterns, limit=limit)
+        self._wrapper = _core._StreamWrapper(patterns, limit=limit)  # noqa: F405
 
     def read(self, size: int = -1) -> bytes:
         """
@@ -50,7 +54,6 @@ class StreamWrapper(io.RawIOBase):
         if not carry:
             return self._wrapper.consume_reminder()
         return self._wrapper.masking_read(carry)
-
 
     def seekable(self):
         """This stream does not support seek operations."""

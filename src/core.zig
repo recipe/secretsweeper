@@ -90,7 +90,15 @@ fn validate_buffer(obj: py.PyObject) !void {
         and !std.mem.eql(u8, "memoryview", input_type)
         and !std.mem.eql(u8, "bytearray", input_type)
     ) {
-        return py.TypeError(root).raiseFmt("expected {s}, found {s}", .{ "bytes, memoryview or bytearray", try typeName.asSlice() });
+        const help_note = if (std.mem.eql(u8, "BytesIO", input_type)) ". You can use the StreamWrapper class for such purposes." else "";
+        return py.TypeError(root).raiseFmt(
+            "expected {s}, found {s}{s}",
+            .{
+                "bytes, memoryview or bytearray",
+                try typeName.asSlice(),
+                help_note
+            }
+        );
     }
 }
 

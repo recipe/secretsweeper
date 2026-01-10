@@ -1,11 +1,13 @@
 import typing
 from collections.abc import Buffer
 
+MAX_NUMBER_OF_STARS = 15
+
 class _StreamWrapper:
     """
     An internal _StreamWrapper class representation written in Zig language.
     """
-    def __init__(self, patterns: typing.Iterable[bytes], /, *, limit: int = 15):
+    def __init__(self, patterns: typing.Iterable[bytes], /, *, limit: int = MAX_NUMBER_OF_STARS):
         """
         The _StreamWrapper class constructor.
 
@@ -36,7 +38,7 @@ class _StreamWrapper:
         ...
 
 
-def mask(input: Buffer, patterns: typing.Iterable[bytes], /, *, limit: int = 15) -> bytes:
+def mask(input: Buffer, patterns: typing.Iterable[bytes], /, *, limit: int = MAX_NUMBER_OF_STARS) -> bytes:
     """
     Masks the specific patterns in the input.
 

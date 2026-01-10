@@ -1,7 +1,9 @@
-import pytest
-import unittest
-import typing
+import io
 import pathlib
+import typing
+import unittest
+
+import pytest
 
 import secretsweeper
 
@@ -49,10 +51,7 @@ def _generator() -> typing.Generator[bytes, None, None]:
     ],
 )
 def test_mask(input: str, patterns: typing.Iterable[str], expected: str) -> None:
-    assert (
-        secretsweeper.mask(input.encode(), (w.encode() for w in patterns))
-        == expected.encode()
-    )
+    assert secretsweeper.mask(input.encode(), (w.encode() for w in patterns)) == expected.encode()
 
 
 @pytest.mark.parametrize(
@@ -64,16 +63,11 @@ def test_mask(input: str, patterns: typing.Iterable[str], expected: str) -> None
         ("thiswasfunny\n", ("funny",), 6, "thiswas*****\n"),
         ("fivesix\n", ("six\n",), 0, "five"),
         ("seveneleven\n", ("eleven",), 6, "seven******\n"),
-        ("line\nsecond line\n", ("ne\nsec", "second"), 6, "li****** line\n"), # overlapping patterns + max size
+        ("line\nsecond line\n", ("ne\nsec", "second"), 6, "li****** line\n"),  # overlapping patterns + max size
     ],
 )
-def test_mask_limit(
-    input: str, patterns: typing.Iterable[str], limit: int, expected: str
-) -> None:
-    assert (
-        secretsweeper.mask(input.encode(), (w.encode() for w in patterns), limit=limit)
-        == expected.encode()
-    )
+def test_mask_limit(input: str, patterns: typing.Iterable[str], limit: int, expected: str) -> None:
+    assert secretsweeper.mask(input.encode(), (w.encode() for w in patterns), limit=limit) == expected.encode()
 
 
 @pytest.mark.parametrize(
@@ -85,10 +79,7 @@ def test_mask_limit(
     ],
 )
 def test_sanitize(input: str, patterns: typing.Iterable[str], expected: str) -> None:
-    assert (
-        secretsweeper.mask(input.encode(), (w.encode() for w in patterns), limit=0)
-        == expected.encode()
-    )
+    assert secretsweeper.mask(input.encode(), (w.encode() for w in patterns), limit=0) == expected.encode()
 
 
 @pytest.mark.parametrize(
@@ -100,10 +91,7 @@ def test_sanitize(input: str, patterns: typing.Iterable[str], expected: str) -> 
     ],
 )
 def test_mask_utf8(input: str, patterns: typing.Iterable[str], expected: str) -> None:
-    assert (
-        secretsweeper.mask(input.encode(), (w.encode() for w in patterns))
-        == expected.encode()
-    )
+    assert secretsweeper.mask(input.encode(), (w.encode() for w in patterns)) == expected.encode()
 
 
 @pytest.mark.parametrize(
@@ -121,12 +109,17 @@ def test_mask_pattern_type(patterns: typing.Iterable[bytes]) -> None:
     assert secretsweeper.mask(b"a", patterns) == b"*"
 
 
+def test_mask_max_number_of_stars_default() -> None:
+    inp = b"a" * (secretsweeper.MAX_NUMBER_OF_STARS + 1)
+    assert secretsweeper.mask(inp, (inp,)) == b"*" * secretsweeper.MAX_NUMBER_OF_STARS
+
+
 def test_can_mask_bytearray() -> None:
-    assert secretsweeper.mask(bytearray(b'funny'), (b"fun",)) == b"***ny"
+    assert secretsweeper.mask(bytearray(b"funny"), (b"fun",)) == b"***ny"
 
 
 def test_can_mask_memory_view() -> None:
-    assert secretsweeper.mask(memoryview(b'funny'), (b"fun",)) == b"***ny"
+    assert secretsweeper.mask(memoryview(b"funny"), (b"fun",)) == b"***ny"
 
 
 def test_stream_wrapper_init_and_del() -> None:
@@ -149,14 +142,23 @@ def test_stream_wrapper_iter() -> None:
             chunk.append(line)
     assert b"".join(chunk) == b"first ****\nsecond ****\nthird ****\n"
 
+
 def test_stream_wrapper_readall() -> None:
     with open(pathlib.Path(__file__).parent / "fixtures" / "file.txt", "rb") as f:
         stream = secretsweeper.StreamWrapper(f, (b"line",))
         result = stream.readall()
     assert result == b"first ****\nsecond ****\nthird ****\n"
 
+
+def test_stream_wrapper_bytes_io() -> None:
+    s = io.BytesIO(initial_bytes=b"funny")
+    stream = secretsweeper.StreamWrapper(s, (b"fun",), limit=0)
+    result = stream.readall()
+    assert result == b"ny"
+
+
 @pytest.mark.parametrize(
-    ("fixture_file","patterns", "expected", "limit"),
+    ("fixture_file", "patterns", "expected", "limit"),
     [
         ("file", (b"line\nthird",), b"first line\nsecond ********** line\n", None),
         # overlapping multiline pattern.
@@ -165,7 +167,9 @@ def test_stream_wrapper_readall() -> None:
         ("file-cr-lf", (b"ne\r\nse", b"second"), b"first li**** line\r\nthird line\r\n", 4),
     ],
 )
-def test_stream_wrapper(fixture_file: str, patterns: typing.Iterable[bytes], expected: bytes, limit: None | int) -> None:
+def test_stream_wrapper(
+    fixture_file: str, patterns: typing.Iterable[bytes], expected: bytes, limit: None | int
+) -> None:
     if limit is None:
         limit = secretsweeper.MAX_NUMBER_OF_STARS
     chunk = []
@@ -176,14 +180,18 @@ def test_stream_wrapper(fixture_file: str, patterns: typing.Iterable[bytes], exp
     assert b"".join(chunk) == expected
 
 
-
 class InvalidInputTest(unittest.TestCase):
     def test_mask_error_input(self) -> None:
         with self.assertRaises(TypeError) as ex:
-            secretsweeper.mask(0, ()) # type: ignore
+            secretsweeper.mask(0, ())  # type: ignore
         self.assertIn("expected bytes, memoryview or bytearray, found <class 'int'>", str(ex.exception))
 
     def test_mask_error_patterns(self) -> None:
         with self.assertRaises(TypeError) as ex:
-            secretsweeper.mask(b"", -1) # type: ignore
+            secretsweeper.mask(b"", -1)  # type: ignore
         self.assertIn("'int' object is not iterable", str(ex.exception))
+
+    def test_mask_bytes_io_input(self) -> None:
+        with self.assertRaises(TypeError) as ex:
+            secretsweeper.mask(io.BytesIO(initial_bytes=b""), ())  # type: ignore
+        self.assertIn("You can use the StreamWrapper class for such purposes.", str(ex.exception))
