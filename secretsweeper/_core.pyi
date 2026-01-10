@@ -27,7 +27,13 @@ class _StreamWrapper:
 
     def consume_reminder(self) -> bytes:
         """
-        :return: Consumes the reminder or return empty bytes it there is no reminder. Then reset its value.
+        :return: Consumes the reminder or return empty bytes if there is no reminder. Then reset its value.
+        """
+        ...
+
+    def get_reminder(self) -> bytes:
+        """
+        :return: Get the reminder or return empty bytes if it's empty.
         """
         ...
 

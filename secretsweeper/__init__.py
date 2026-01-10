@@ -35,10 +35,10 @@ class StreamWrapper(io.RawIOBase):
         :return: If 0 bytes are returned, and size was not 0, this indicates end of file.
         If the object is in non-blocking mode and no bytes are available, None is returned.
         """
-        carry = self._stream.read(size)
-        if not carry:
-            return self._wrapper.consume_reminder()
-        return self._wrapper.masking_read(carry)
+        while carry := self._stream.read(size):
+            if res := self._wrapper.masking_read(carry):
+                return res
+        return self._wrapper.consume_reminder()
 
     def readline(self, size: int | None = -1, /) -> bytes:
         """
@@ -48,12 +48,12 @@ class StreamWrapper(io.RawIOBase):
         the method may move it to the beginning of the next line.
 
         :param size: If size is specified, at most size bytes will be read.
-        :return: The line terminator is always b'\n' for binary files.
+        :return: The line with masked patterns. The line terminator is always b'\n' for binary files.
         """
-        carry = self._stream.readline(size)
-        if not carry:
-            return self._wrapper.consume_reminder()
-        return self._wrapper.masking_read(carry)
+        while carry := self._stream.readline(size):
+            if res := self._wrapper.masking_read(carry):
+                return res
+        return self._wrapper.consume_reminder()
 
     def seekable(self):
         """This stream does not support seek operations."""
