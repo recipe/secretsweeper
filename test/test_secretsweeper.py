@@ -121,6 +121,13 @@ def test_mask_pattern_type(patterns: typing.Iterable[bytes]) -> None:
     assert secretsweeper.mask(b"a", patterns) == b"*"
 
 
+def test_can_mask_bytearray() -> None:
+    assert secretsweeper.mask(bytearray(b'funny'), (b"fun",)) == b"***ny"
+
+
+def test_can_mask_memory_view() -> None:
+    assert secretsweeper.mask(memoryview(b'funny'), (b"fun",)) == b"***ny"
+
 
 def test_stream_wrapper_init_and_del() -> None:
     wrapper = secretsweeper._core._StreamWrapper((b"a", b"b"))
@@ -174,7 +181,7 @@ class InvalidInputTest(unittest.TestCase):
     def test_mask_error_input(self) -> None:
         with self.assertRaises(TypeError) as ex:
             secretsweeper.mask(0, ()) # type: ignore
-        self.assertIn("expected bytes, found <class 'int'>", str(ex.exception))
+        self.assertIn("expected bytes, memoryview or bytearray, found <class 'int'>", str(ex.exception))
 
     def test_mask_error_patterns(self) -> None:
         with self.assertRaises(TypeError) as ex:

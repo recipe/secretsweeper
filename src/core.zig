@@ -79,9 +79,29 @@ pub const _StreamWrapper = py.class(struct {
     }
 });
 
+/// Validate that the input object is a bytes-like object.
+fn validate_buffer(obj: py.PyObject) !void {
+    const input_type = try obj.getTypeName();
+
+    const typeName = try py.str(root, py.type_(root, obj));
+    defer typeName.obj.decref();
+
+    if (!std.mem.eql(u8, "bytes", input_type)
+        and !std.mem.eql(u8, "memoryview", input_type)
+        and !std.mem.eql(u8, "bytearray", input_type)
+    ) {
+        return py.TypeError(root).raiseFmt("expected {s}, found {s}", .{ "bytes, memoryview or bytearray", try typeName.asSlice() });
+    }
+}
+
 /// Masks specific patterns in the input string with the asterisks.
-pub fn mask(args: struct { input: py.PyBytes, patterns: py.PyObject, limit: u64 = MAX_NUMBER_OF_STARS }) !py.PyBytes {
+pub fn mask(args: struct { input: py.PyObject, patterns: py.PyObject, limit: u64 = MAX_NUMBER_OF_STARS }) !py.PyBytes {
     const max_number_of_stars = args.limit;
+
+    validate_buffer(args.input) catch |err| return err;
+
+    const view = try args.input.getBuffer(root, py.PyBuffer.Flags.ND);
+    defer view.release();
 
     var ac = try Aho.init(py_allocator);
     defer ac.deinit();
@@ -92,7 +112,7 @@ pub fn mask(args: struct { input: py.PyBytes, patterns: py.PyObject, limit: u64 
     }
 
     try ac.build();
-    const masked = try ac.mask(.{ .text = try args.input.asSlice(), .max_stars = max_number_of_stars });
+    const masked = try ac.mask(.{ .text = view.asSlice(u8), .max_stars = max_number_of_stars });
     defer py_allocator.free(masked);
 
     const res = try py.PyBytes.create(masked);

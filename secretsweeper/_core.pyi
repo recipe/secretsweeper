@@ -1,4 +1,5 @@
 import typing
+from collections.abc import Buffer
 
 class _StreamWrapper:
     """
@@ -35,11 +36,11 @@ class _StreamWrapper:
         ...
 
 
-def mask(input: bytes, patterns: typing.Iterable[bytes], /, *, limit: int = 15) -> bytes:
+def mask(input: Buffer, patterns: typing.Iterable[bytes], /, *, limit: int = 15) -> bytes:
     """
     Masks the specific patterns in the input.
 
-    :param input: An input.
+    :param input: An input bytes, bytearray or memoryview.
     :param patterns: Any iterable of patterns that have to be masked with the `*` asterisk character.
     :param limit: The max number of consecutive stars.
     :return Returns the input string with masked patterns.
