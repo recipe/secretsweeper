@@ -14,20 +14,28 @@ const Node = struct {
     id: usize = 0,
 };
 
+/// Aho-Corasick automaton class.
 pub const Aho = struct {
     allocator: std.mem.Allocator,
+
+    // Automaton related variables:
+
     /// A list of all existing nodes.
     nodes: std.ArrayList(Node),
     /// Total number of patterns.
     pidx: usize,
     /// The total number of nodes.
     total: usize,
+
+    // Sweeper related variables:
+
     /// The last found pattern is used to detect overlapping patterns.
     /// It is a position of the last character of the pattern in the input string.
     /// As this automaton always detects the leftmost-longest pattern first we don't need
     /// to take into consideration all possible overlap cases.
     last_occur: struct {
         /// The position of the last character of the pattern in the input.
+        /// It can be negative for the position in the previous line of the streaming mode.
         /// A value of -1 means that no occurrences of any pattern have been found yet.
         pos: isize = -1,
         /// The pattern length.
@@ -47,7 +55,7 @@ pub const Aho = struct {
             len: usize
         ) usize {
             if (@as(isize, @intCast(pos)) - @as(isize, @intCast(len)) < self_.pos) {
-                return pos - @as(usize, @intCast(self_.pos));
+                return @intCast(@as(isize, @intCast(pos)) - self_.pos);
             }
             return MAX_INT;
         }
@@ -55,6 +63,8 @@ pub const Aho = struct {
     /// In the streaming mode it may hold a reminder of the previous line that should be taken into consideration
     /// in the consecutive call.
     reminder: ?[]u8 = null,
+    /// Current state in the trie.
+    state: usize = 0,
 
     pub fn init(allocator: std.mem.Allocator) !Aho {
         var nodes= try std.ArrayList(Node).initCapacity(allocator, 0);
@@ -147,42 +157,43 @@ pub const Aho = struct {
         /// treating the input as a continuation of the previous one.
         is_streaming: bool = false,
     }) ![]u8 {
-        // Resetting the last occurrence of the found pattern.
-        self.last_occur = .{};
         if (!args.is_streaming) {
             self.reset_reminder();
+            self.state = 0;
+            self.last_occur = .{};
         }
         const reminder_len = (self.reminder orelse "").len;
         const input_len = reminder_len + args.text.len;
         // Result buffer.
-        var buf = try self.allocator.alloc(u8, reminder_len + args.text.len);
+        var buf = try self.allocator.alloc(u8, input_len);
         // The actual buffer length.
         var buf_len: usize = 0;
-        // A state in the trie.
-        var u: usize = 0;
-        // Position in the input, taking into account the remainder.
-        var pos: usize = 0;
-        // The most recent position in the input where the automaton was in the starting state.
-        var last_starting_state_pos: isize = -1;
-        while (pos < input_len): (pos += 1) {
-            const c = if (pos < reminder_len) self.reminder.?[pos] else args.text[pos - reminder_len];
+        if (reminder_len > 0) {
+            // Copy reminder to the buffer to restore the state and continue.
+            @memcpy(buf[0..reminder_len], self.reminder.?[0..reminder_len]);
+            buf_len = reminder_len;
+        }
+        // The most recent position in the buffer where the automaton was in the starting state.
+        var buf_last_start_state_pos: isize = -1;
+        for (args.text, 0..) |c, pos| {
             // Walk the automaton.
-            u = self.nodes.items[u].move[c];
-            if (u == 0) {
-                last_starting_state_pos = @intCast(pos);
+            self.state = self.nodes.items[self.state].move[c];
+            if (self.state == 0) {
+                buf_last_start_state_pos = @intCast(buf_len);
             }
             // Copy from input character by character.
             buf[buf_len] = c;
             buf_len += 1;
             // Pattern found and should be masked.
-            if (self.nodes.items[u].id > 0) {
+            if (self.nodes.items[self.state].id > 0) {
                 // This is the difference between the last character positions of the two patterns.
-                const num = self.last_occur.overlapReminder(pos, self.nodes.items[u].len);
-                self.last_occur.cum_len = if (num == MAX_INT) self.nodes.items[u].len else self.last_occur.cum_len + num;
-                // Replace the last found pattern eventually.
+                const num = self.last_occur.overlapReminder(pos, self.nodes.items[self.state].len);
+                self.last_occur.cum_len = if (num == MAX_INT) self.nodes.items[self.state].len else self.last_occur.cum_len + num;
+                // Replace the last found pattern position and length.
+                // Defer is used because under some conditions the block may exit with the continue below.
                 defer {
                     self.last_occur.pos = @intCast(pos);
-                    self.last_occur.len = self.nodes.items[u].len;
+                    self.last_occur.len = self.nodes.items[self.state].len;
                 }
                 // Difference between the pattern length and max number of stars.
                 // If this difference is greater than 0 we need to limit the mask.
@@ -193,7 +204,7 @@ pub const Aho = struct {
                     diff = @min(num, diff);
                 }
                 buf_len -= diff;
-                var size = self.nodes.items[u].len - diff;
+                var size = self.nodes.items[self.state].len - diff;
                 if (num < MAX_INT) {
                     if (self.last_occur.len >= args.max_stars) {
                         continue;
@@ -205,10 +216,14 @@ pub const Aho = struct {
             }
         }
         var new_reminder_len: usize = 0;
-        if (args.is_streaming and last_starting_state_pos < input_len) {
-            new_reminder_len = @intCast(@as(isize, @intCast(input_len)) - last_starting_state_pos - 1);
-            self.reminder = try self.allocator.alloc(u8, new_reminder_len);
-            @memcpy(self.reminder.?, buf[buf_len - new_reminder_len..buf_len]);
+        if (args.is_streaming) {
+            self.reset_reminder();
+            if (buf_last_start_state_pos + 1 < buf_len) {
+                new_reminder_len = @intCast(@as(isize, @intCast(buf_len)) - buf_last_start_state_pos - 1);
+                self.reminder = try self.allocator.alloc(u8, new_reminder_len);
+                @memcpy(self.reminder.?, buf[buf_len - new_reminder_len..buf_len]);
+            }
+            defer self.last_occur.pos = self.last_occur.pos - @as(isize, @intCast(args.text.len));
         }
         if (buf_len < input_len or new_reminder_len > 0) {
             buf = try self.allocator.realloc(buf, buf_len - new_reminder_len);
@@ -248,7 +263,6 @@ test "Aho" {
     ac.deinit();
 
     ac = try Aho.init(allocator);
-    defer ac.deinit();
     const patterns2 = [_][]const u8{"ne\nse", "second"};
     for (0..patterns2.len) |i| {
         _ = try ac.insert(patterns2[i]);
@@ -258,4 +272,50 @@ test "Aho" {
     const masked_overlapped = try ac.mask(.{ .text= "line\nsecond line\n", .max_stars= 6 });
     defer allocator.free(masked_overlapped);
     try testing.expectEqualStrings("li****** line\n", masked_overlapped);
+
+    ac.deinit();
+
+    ac = try Aho.init(allocator);
+    _ = try ac.insert("line");
+    try ac.build();
+    var file_content = [_][]const u8{"first line\n", "second line\n", "third line\n"};
+    var expected = [_][]const u8{"first ****\n", "second ****\n", "third ****\n"};
+    for (0..file_content.len) |i| {
+        const buffer = try ac.mask(.{ .text= file_content[i], .is_streaming = true });
+        defer allocator.free(buffer);
+        try testing.expectEqualStrings(expected[i], buffer);
+        try testing.expectEqualStrings("", ac.reminder orelse "");
+    }
+
+    ac.deinit();
+
+    ac = try Aho.init(allocator);
+    _ = try ac.insert("st line\nsecond line\nthird ");
+    try ac.build();
+    file_content = [_][]const u8{"first line\n", "second line\n", "third line\n"};
+    expected = [_][]const u8{"fir", "", "*line\n"};
+    var expected_reminder = [_][]const u8{"st line\n", "st line\nsecond line\n", ""};
+    for (0..file_content.len) |i| {
+        const buffer = try ac.mask(.{ .text= file_content[i], .is_streaming = true, .max_stars = 1 });
+        defer allocator.free(buffer);
+        try testing.expectEqualStrings(expected[i], buffer);
+        try testing.expectEqualStrings(expected_reminder[i], ac.reminder orelse "");
+    }
+
+    ac.deinit();
+
+    ac = try Aho.init(allocator);
+    defer ac.deinit();
+    _ = try ac.insert("st line\nsecond line\nthird line\n");
+    try ac.build();
+    file_content = [_][]const u8{"first line\n", "second line\n", "third line\n"};
+    expected = [_][]const u8{"fir", "", ""};
+    expected_reminder = [_][]const u8{"st line\n", "st line\nsecond line\n", "*"};
+    for (0..file_content.len) |i| {
+        const buffer = try ac.mask(.{ .text= file_content[i], .is_streaming = true, .max_stars = 1 });
+        defer allocator.free(buffer);
+        try testing.expectEqualStrings(expected[i], buffer);
+        try testing.expectEqualStrings(expected_reminder[i], ac.reminder orelse "");
+    }
+    try testing.expectEqualStrings("*", ac.reminder orelse "");
 }

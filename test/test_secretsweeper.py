@@ -167,8 +167,8 @@ def test_stream_wrapper_bytes_io() -> None:
         ("file-cr-lf", (b"ne\r\nse", b"second"), 4, b"first li**** line\r\nthird line\r\n"),
         # multiline pattern for more than two lines.
         ("file", (b"st line\nsecond line\nthird ",), 1, b"fir*line\n"),
-        # FIXME multiline pattern for more than two lines up to the end of the input
-        # ("file", (b"st line\nsecond line\nthird line\n",), 1, b"fir*"),
+        # multiline pattern for more than two lines up to the end of the input
+        ("file", (b"st line\nsecond line\nthird line\n",), 1, b"fir*"),
     ],
 )
 def test_stream_wrapper(
