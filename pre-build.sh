@@ -15,7 +15,7 @@ PYDUST_PATH=`python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"]
 ln -sf $PYDUST_PATH ./pydust
 ls -al ./pydust
 
-Echo "Building the package"
+echo "Building the package"
 poetry build
 
 #echo "Installing poetry..."
