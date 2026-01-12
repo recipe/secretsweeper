@@ -40,7 +40,7 @@ jobs:
         env:
           CIBW_BEFORE_BUILD: |
             pip install poetry && \
-            ln -sf `python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])'` pydust && \
+            ln -sf `python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])'`/pydust pydust && \
             poetry install
           CIBW_BUILD: ${{ matrix.python }}-${{ matrix.architectures[1] }}*
           CIBW_SKIP: "*-musllinux*"
@@ -52,7 +52,7 @@ jobs:
         env:
           CIBW_BEFORE_BUILD: |
             pip install poetry && \
-            ln -sf `python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])'` pydust && \
+            ln -sf `python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])'`/pydust pydust && \
             poetry install
           CIBW_BUILD: ${{ matrix.python }}-${{ matrix.architectures[1] }}*
           CIBW_SKIP: "*-musllinux*"
