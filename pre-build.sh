@@ -8,7 +8,7 @@ pip install poetry
 echo "Installing dependencies..."
 poetry install --no-root
 
-pip freze
+pip freeze
 
 echo "Creating a symlink to the pydust library..."
 PYDUST_PATH=`python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])'`/pydust
