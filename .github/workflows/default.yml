@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - *
+  pull_requests:
+    branches:
+      - master
+
+jobs:
+  build-wheels:
+    name: Build wheel for ${{ matrix.python }}-${{ matrix.architectures[1] }}-${{ matrix.architectures[2] }}
+    runs-on: ${{ matrix.architectures[0] }}
+    strategy:
+      fail-fast: false
+      matrix:
+        architectures:
+          - [ubuntu-latest, manylinux, "x86_64 aarch64"]
+          - [macos-15, macosx, x86_64]
+          - [macos-26, macosx, arm64]
+        python: ["cp311", "cp312", "cp313", "cp314"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU
+        if: runner.os == 'Linux'
+        uses: docker/setup-qemu-action@v1
+        with:
+          platforms: all
+
+      - name: Build wheels on linux
+        if: ${{ matrix.architectures[1] == 'manylinux' }}
+        uses: pypa/cibuildwheel@v3.3.0
+        env:
+          CIBW_BUILD: ${{ matrix.python }}-${{ matrix.architectures[1] }}*
+          CIBW_SKIP: "*-musllinux*"
+          CIBW_ARCHS_LINUX: ${{ matrix.architectures[2] }}
+
+      - name: Build wheels on macos
+        if: ${{ matrix.architectures[1] == 'macosx' }}
+        uses: pypa/cibuildwheel@v3.3.0
+        env:
+          CIBW_BUILD: ${{ matrix.python }}-${{ matrix.architectures[1] }}*
+          CIBW_SKIP: "*-musllinux*"
+          CIBW_ARCHS_MACOS: ${{ matrix.architectures[2] }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.python }}-${{ matrix.architectures[1] }}-${{ matrix.architectures[2] }}
+          path: ./wheelhouse/*.whl
+
+
