@@ -9,6 +9,7 @@ source $HOME/.local/bin/env
 
 echo "Installing dependencies..."
 uv sync --no-install-project
+. .venv/bin/activate
 
 echo "Creating a symlink to the pydust library..."
 PYDUST_PATH=`python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])'`/pydust
