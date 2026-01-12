@@ -157,6 +157,17 @@ def test_stream_wrapper_bytes_io() -> None:
     assert result == b"ny"
 
 
+def test_stream_wrapper_read_limited_size() -> None:
+    def _iter() -> typing.Iterator[bytes]:
+        with open(pathlib.Path(__file__).parent / "fixtures" / "file.txt", "rb") as f:
+            stream = secretsweeper.StreamWrapper(f, (b"st line\nsecond line\nthird line\n",), limit=5)
+            # Note: We don't guarantee that the buffer won't exceed the provided size.
+            while buf := stream.read(size=3):
+                yield buf
+
+    assert b"".join(_iter()) == b"fir*****"
+
+
 @pytest.mark.parametrize(
     ("fixture_file", "patterns", "limit", "expected"),
     [
@@ -167,8 +178,14 @@ def test_stream_wrapper_bytes_io() -> None:
         ("file-cr-lf", (b"ne\r\nse", b"second"), 4, b"first li**** line\r\nthird line\r\n"),
         # multiline pattern for more than two lines.
         ("file", (b"st line\nsecond line\nthird ",), 1, b"fir*line\n"),
-        # multiline pattern for more than two lines up to the end of the input
+        # multiline pattern for more than two lines up to the end of the input.
         ("file", (b"st line\nsecond line\nthird line\n",), 1, b"fir*"),
+        # removing overlapping patterns.
+        ("file", (b"third", b"ne\n", b"e\n", b" line\n", b"st line\nsecond line\nth"), 0, b"fir"),
+        # non overlapping - 1 asterisks for every pattern.
+        ("file", (b"first line\n", b"second line\n", b"third line\n"), 1, b"***"),
+        # overlapping - 1 asterisks in total for all patterns.
+        ("file", (b"first line\ns", b"second line\nt", b"third line\n"), 1, b"*"),
     ],
 )
 def test_stream_wrapper(
