@@ -17,9 +17,10 @@ jobs:
       matrix:
         architectures:
           - [ubuntu-latest, manylinux, "x86_64 aarch64"]
-          - [macos-15, macosx, x86_64]
-          - [macos-26, macosx, arm64]
-        python: ["cp311", "cp312", "cp313", "cp314"]
+#           - [macos-15, macosx, x86_64]
+#           - [macos-26, macosx, arm64]
+#         python: ["cp311", "cp312", "cp313", "cp314"]
+        python: ["cp313"]
 
     steps:
       - name: Checkout
@@ -37,6 +38,7 @@ jobs:
         if: ${{ matrix.architectures[1] == 'manylinux' }}
         uses: pypa/cibuildwheel@v3.3.0
         env:
+          CIBW_BEFORE_BUILD: pip install poetry && poetry install
           CIBW_BUILD: ${{ matrix.python }}-${{ matrix.architectures[1] }}*
           CIBW_SKIP: "*-musllinux*"
           CIBW_ARCHS_LINUX: ${{ matrix.architectures[2] }}
@@ -45,6 +47,7 @@ jobs:
         if: ${{ matrix.architectures[1] == 'macosx' }}
         uses: pypa/cibuildwheel@v3.3.0
         env:
+          CIBW_BEFORE_BUILD: pip install poetry && poetry install
           CIBW_BUILD: ${{ matrix.python }}-${{ matrix.architectures[1] }}*
           CIBW_SKIP: "*-musllinux*"
           CIBW_ARCHS_MACOS: ${{ matrix.architectures[2] }}
