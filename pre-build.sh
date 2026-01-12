@@ -6,7 +6,7 @@ echo "Installing poetry..."
 pip install poetry
 
 echo "Installing dependencies..."
-poetry install
+poetry install --no-root
 
 pip freze
 
