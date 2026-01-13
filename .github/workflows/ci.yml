@@ -71,7 +71,10 @@ jobs:
           args: format --check .
 
       - name: Pytest
-        run: pytest test
+        run: |
+            WHEEL=$(find ./dist -maxdepth 1 -type f -name 'secretsweeper-*.whl' | head -n 1)
+            pip install "$WHEEL"
+            pytest test
 
       - name: Check stubs
         run: poetry run python -m ziglang build generate-stubs -Dcheck-stubs=true
