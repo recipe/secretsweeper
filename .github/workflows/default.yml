@@ -28,14 +28,14 @@ jobs:
         uses: pypa/cibuildwheel@v3.3.1
         env:
           CIBW_BEFORE_BUILD: ./pre-build.sh
-#         with:
-#           package-dir: .
-#           output-dir: wheelhouse
-#           config-file: "{package}/pyproject.toml"
+        with:
+          package-dir: .
+          output-dir: dist
+          config-file: "{package}/pyproject.toml"
 
       - uses: actions/upload-artifact@v4
         with:
           name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
-          path: ./wheelhouse/*.whl
+          path: ./dist/*.whl
 
 
