@@ -26,8 +26,8 @@ jobs:
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.3.1
-#         env:
-#           CIBW_BEFORE_BUILD: ./pre-build.sh
+        env:
+          CIBW_BEFORE_BUILD: pip install poetry==2.2.1 ziggy-pydust==0.26.0
 #         with:
 #           package-dir: .
 #           output-dir: wheelhouse
