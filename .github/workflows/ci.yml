@@ -79,4 +79,4 @@ jobs:
       - name: Check stubs
         run: |
             pip install ziglang==0.15.1
-            poetry run python -m ziglang build generate-stubs -Dcheck-stubs=true
+            python -m ziglang build generate-stubs -Dcheck-stubs=true
