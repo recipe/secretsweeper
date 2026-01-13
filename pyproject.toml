@@ -40,6 +40,6 @@ root = "src/core.zig"
 dev = [
     "poetry>=2.2.1",
     "ziggy-pydust==0.26.0",
-    "pytest (>=8.4.2,<9.0.0)",
-    "ruff (>=0.13.3,<0.14.0)"
+    "pytest==8.4.2",
+    "ruff==0.13.3"
 ]
