@@ -60,8 +60,10 @@ jobs:
       - name: Poetry Build
         run: poetry build -v
 
-      - name: Ruff
-        run: poetry run ruff check .
+      - name: Ruff check
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: --output-format=github
 
       - name: Ruff format
         uses: astral-sh/ruff-action@v3
