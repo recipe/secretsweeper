@@ -26,12 +26,12 @@ jobs:
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.3.1
-        env:
-          CIBW_BEFORE_BUILD: ./pre-build.sh
-        with:
-          package-dir: .
-          output-dir: wheelhouse
-          config-file: "{package}/pyproject.toml"
+#         env:
+#           CIBW_BEFORE_BUILD: ./pre-build.sh
+#         with:
+#           package-dir: .
+#           output-dir: wheelhouse
+#           config-file: "{package}/pyproject.toml"
 
       - uses: actions/upload-artifact@v4
         with:
