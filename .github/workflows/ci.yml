@@ -55,15 +55,13 @@ jobs:
             ls -al ./pydust/src/ffi.h
 
       - name: Poetry Install
-        run: poetry install -n -vv
+        run: poetry install -n -v
 
       - name: Poetry Build
         run: poetry build -v
 
       - name: Ruff check
         uses: astral-sh/ruff-action@v3
-        with:
-          args: --output-format=github
 
       - name: Ruff format
         uses: astral-sh/ruff-action@v3
