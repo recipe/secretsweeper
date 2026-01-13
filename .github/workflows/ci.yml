@@ -46,6 +46,7 @@ jobs:
 
       - name: Create a symlink to the pydust lib
         run: |
+            pip install ziggy-pydust==0.26.0
             PYDUST_PATH=`python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])'`/pydust
             ln -sf $PYDUST_PATH ./pydust
             ls -al ./pydust/src/ffi.h
