@@ -44,13 +44,15 @@ jobs:
           path: .venv
           key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
-      - name: Poetry Install
-        run: poetry install -n -v
       - name: Create a symlink to the pydust lib
         run: |
             PYDUST_PATH=`python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])'`/pydust
             ln -sf $PYDUST_PATH ./pydust
             ls -al ./pydust
+
+      - name: Poetry Install
+        run: poetry install -n -v
+
       - name: Poetry Build
         run: poetry build -v
 
