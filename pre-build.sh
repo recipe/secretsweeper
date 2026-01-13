@@ -17,6 +17,9 @@ ls -al ./pydust
 
 echo "Building the package..."
 poetry build
+ls -al ./dist
 
 echo "Running tests..."
+WHEEL=$(find ./dist -maxdepth 1 -type f -name 'secretsweeper-*.whl' | head -n 1)
+pip install "./dist/$WHEEL"
 pytest test -v
