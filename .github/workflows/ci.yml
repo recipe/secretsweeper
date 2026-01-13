@@ -77,4 +77,6 @@ jobs:
             pytest test
 
       - name: Check stubs
-        run: poetry run python -m ziglang build generate-stubs -Dcheck-stubs=true
+        run: |
+            pin install ziglang==0.15.1
+            poetry run python -m ziglang build generate-stubs -Dcheck-stubs=true
