@@ -58,7 +58,9 @@ jobs:
         run: poetry install -n -v
 
       - name: Poetry Build
-        run: poetry build -v
+        run: |
+            poetry build -v
+            ls -al ./dist
 
       - name: Ruff check
         uses: astral-sh/ruff-action@v3
