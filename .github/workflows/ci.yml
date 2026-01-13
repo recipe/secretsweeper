@@ -78,5 +78,5 @@ jobs:
 
       - name: Check stubs
         run: |
-            pip install ziglang==0.15.1
+            pip install ziglang==0.15.1 black==25.12.0
             python -m ziglang build generate-stubs -Dcheck-stubs=true
