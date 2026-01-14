@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - "[0-9]*"
   pull_request:
     branches:
       - main
@@ -62,6 +64,33 @@ jobs:
       - name: Pytest
         run: uv run pytest test
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          path: ./dist/*.whl
+
       # We generate nice stubs manually.
       #- name: Check stubs
       #  run: uv run python -m ziglang build generate-stubs -Dcheck-stubs=true
+
+  upload:
+#     if: startsWith(github.ref, 'refs/tags/')
+    needs: [build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: secretsweeper-*.whl
+          merge-multiple: true
+          path: dist
+
+      - name: Display structure of downloaded files
+        run: ls -lh dist
+
+#       - uses: pypa/gh-action-pypi-publish@release/v1
+#         if: startsWith(github.ref, 'refs/tags/')
+#         with:
+#           skip-existing: true
+#           user: ${{ secrets.PYPI_USERNAME }}
+#           password: ${{ secrets.PYPI_PASSWORD }}
