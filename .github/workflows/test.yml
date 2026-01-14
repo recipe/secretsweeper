@@ -38,7 +38,7 @@ jobs:
       - name: debug
         run: |
             find .venv -type f -name ffi.h
-            python -c 'import sysconfig; print(sysconfig.get_paths())
+            python -c 'import sysconfig; print(sysconfig.get_paths())'
 
       - name: Create a symlink to the pydust lib
         run: |
