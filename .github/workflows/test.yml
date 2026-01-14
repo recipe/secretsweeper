@@ -32,14 +32,17 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
 
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v3
+        with:
+          poetry-version: "2.2.1"
+
       - name: Install dependencies
         run: uv sync --no-install-project
 
-      - name: debug
-        run: python -c 'import sysconfig; print(sysconfig.get_paths())'
-
       - name: Create a symlink to the pydust lib
         run: |
+            python -c 'import sysconfig; print(sysconfig.get_paths())'
             find .venv -type f -name ffi.h
             ln -sf .venv/lib/python${{ matrix.python-version }}/site-packages/pydust ./pydust
             ls -al ./pydust/src/ffi.h
