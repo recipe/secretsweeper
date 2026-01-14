@@ -38,6 +38,7 @@ jobs:
       - name: Create a symlink to the pydust lib
         run: |
             SITE_PACKAGES_PATH=`python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])'`
+            echo "SITE_PACKAGES_PATH=$SITE_PACKAGES_PATH"
             ls -al $SITE_PACKAGES_PATH
             ln -sf $SITE_PACKAGES_PATH/pydust ./pydust
             ls -al ./pydust/src/ffi.h
