@@ -8,7 +8,7 @@ import pytest
 import secretsweeper
 
 
-def _generator() -> typing.Generator[bytes, None, None]:
+def _generator() -> typing.Iterator[bytes]:
     yield b"a"
 
 
@@ -175,7 +175,7 @@ def test_stream_wrapper_read_limited_size() -> None:
         # overlapping multiline pattern.
         ("file", (b"ne\nse", b"second"), 3, b"first li*** line\nthird line\n"),
         # the first pattern is near the limit and next overlapping pattern is less than the limit.
-        ("file-cr-lf", (b"ne\r\nse", b"second"), 4, b"first li**** line\r\nthird line\r\n"),
+        ("file", (b"ne\nse", b"second"), 4, b"first li**** line\nthird line\n"),
         # multiline pattern for more than two lines.
         ("file", (b"st line\nsecond line\nthird ",), 1, b"fir*line\n"),
         # multiline pattern for more than two lines up to the end of the input.

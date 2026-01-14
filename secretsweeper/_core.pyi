@@ -43,7 +43,6 @@ class _StreamWrapper:
         """
         ...
 
-
 def mask(input: Buffer, patterns: typing.Iterable[bytes], /, *, limit: int = MAX_NUMBER_OF_STARS) -> bytes:
     """
     Masks the specific patterns in the input.
