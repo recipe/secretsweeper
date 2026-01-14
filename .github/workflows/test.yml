@@ -36,7 +36,9 @@ jobs:
         run: uv sync --no-install-project
 
       - name: debug
-        run: find .venv -type f -name ffi.h
+        run: |
+            find .venv -type f -name ffi.h
+            python -c 'import sysconfig; print(sysconfig.get_paths())
 
       - name: Create a symlink to the pydust lib
         run: |
