@@ -90,7 +90,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: secretsweeper-*.whl
+          pattern: wheels-*
           merge-multiple: true
           path: dist
 
