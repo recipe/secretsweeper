@@ -1,7 +1,7 @@
 [project]
 name = "secretsweeper"
 version = "0.0.1a1"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 
 [build-system]
 requires = ["poetry-core", "ziggy-pydust==0.26.0"]
@@ -24,7 +24,7 @@ include = [
 script = "build.py"
 
 [tool.poetry.dependencies]
-python = "^3.13"
+python = "^3.11"
 
 [tool.ruff]
 line-length = 120
@@ -40,6 +40,6 @@ root = "src/core.zig"
 dev = [
     "poetry>=2.2.1",
     "ziggy-pydust==0.26.0",
-    "pytest==8.4.2",
-    "ruff==0.13.3"
+    "pytest (>=8.4.2,<9.0.0)",
+    "ruff (>=0.13.3,<0.14.0)"
 ]

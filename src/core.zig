@@ -1,6 +1,5 @@
 const py = @import("pydust");
 const std = @import("std");
-const ffi = py.ffi;
 const root = @This();
 const py_allocator = py.allocator;
 const Aho = @import("aho.zig").Aho;

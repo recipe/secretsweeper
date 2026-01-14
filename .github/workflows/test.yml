@@ -1,0 +1,62 @@
+name: CI
+
+on: [push]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version:
+          - "3.11"
+          - "3.12"
+          - "3.13"
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: action/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.8.22"
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --no-install-project
+
+      - name: Create a symlink to the pydust lib
+        run: |
+            PYDUST_PATH=`python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])'`/pydust
+            ln -sf $PYDUST_PATH ./pydust
+            ls -al ./pydust/src/ffi.h
+
+      - name: Poetry Build
+        run: |
+            poetry build -v
+            ls -al ./dist
+
+      - name: Ruff check
+        uses: astral-sh/ruff-action@v3
+
+      - name: Ruff format
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: format --check .
+
+      - name: Pytest
+        run: pytest test
+
+      # We generate nice stubs manually.
+      #- name: Check stubs
+      #  run: python -m ziglang build generate-stubs -Dcheck-stubs=true
