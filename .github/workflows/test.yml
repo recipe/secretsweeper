@@ -33,9 +33,10 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: |
-            . .venv/bin/activate
-            uv sync --no-install-project
+        run: uv sync --no-install-project
+
+      - name: debug
+        run: find .venv -type f -name ffi.h
 
       - name: Create a symlink to the pydust lib
         run: |
