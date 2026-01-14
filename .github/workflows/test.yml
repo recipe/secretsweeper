@@ -32,11 +32,6 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
 
-      - name: Install Poetry
-        uses: abatilo/actions-poetry@v3
-        with:
-          poetry-version: "2.2.1"
-
       - name: Install dependencies
         run: uv sync --no-install-project
 
@@ -49,22 +44,18 @@ jobs:
 
       - name: Poetry Build
         run: |
-            poetry build -v
+            uv run poetry build -v
             ls -al ./dist
 
       - name: Ruff check
-        run: ruff check .
-#         uses: astral-sh/ruff-action@v3
+        run: uv run ruff check .
 
       - name: Ruff format
-        run: ruff format --check .
-#         uses: astral-sh/ruff-action@v3
-#         with:
-#           args: format --check .
+        run: uv run ruff format --check .
 
       - name: Pytest
-        run: pytest test
+        run: uv run pytest test
 
       # We generate nice stubs manually.
       #- name: Check stubs
-      #  run: python -m ziglang build generate-stubs -Dcheck-stubs=true
+      #  run: uv run python -m ziglang build generate-stubs -Dcheck-stubs=true
