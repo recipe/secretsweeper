@@ -67,7 +67,9 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
+          name: wheels
           path: ./dist/*.whl
+          if-no-files-found: error
 
       # We generate nice stubs manually.
       #- name: Check stubs
