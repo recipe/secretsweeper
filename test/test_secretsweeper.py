@@ -8,7 +8,7 @@ import pytest
 import secretsweeper
 
 
-def _generator() -> typing.Generator[bytes]:
+def _generator() -> typing.Iterator[bytes]:
     yield b"a"
 
 
