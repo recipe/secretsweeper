@@ -95,7 +95,7 @@ jobs:
           if-no-files-found: error
 
   upload:
-#     if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/')
     needs: [build]
     runs-on: ubuntu-latest
 
