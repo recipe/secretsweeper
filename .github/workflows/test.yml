@@ -30,12 +30,12 @@ jobs:
           version: "0.8.22"
 
       - name: Set up Python ${{ matrix.python-version }}
-        run: |
-            uv python install ${{ matrix.python-version }}
-            source $HOME/.local/bin/env
+        run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --no-install-project
+        run: |
+            . .venv/bin/activate
+            uv sync --no-install-project
 
       - name: Create a symlink to the pydust lib
         run: |
