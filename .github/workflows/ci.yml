@@ -61,7 +61,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: cmd
         run: |
-            for /f "delims=" %%i in ('uv run python -c "import sysconfig; print(sysconfig.get_paths()[\"platlib\"]) "') do set PLATLIB=%%i
+            call .venv\Scripts\activate
+            for /f "delims=" %%i in ('python -c "import sysconfig; print(sysconfig.get_paths()[\"platlib\"]) "') do set PLATLIB=%%i
             echo Using platlib: %PLATLIB%
             dir "%PLATLIB%"
 
