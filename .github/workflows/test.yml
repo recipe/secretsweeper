@@ -37,8 +37,9 @@ jobs:
 
       - name: Create a symlink to the pydust lib
         run: |
-            PYDUST_PATH=`python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])'`/pydust
-            ln -sf $PYDUST_PATH ./pydust
+            SITE_PACKAGES_PATH=`python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])'`
+            ls -al $SITE_PACKAGES_PATH
+            ln -sf $SITE_PACKAGES_PATH/pydust ./pydust
             ls -al ./pydust/src/ffi.h
 
       - name: Poetry Build
