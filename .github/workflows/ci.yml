@@ -58,7 +58,7 @@ jobs:
             ls -al ./pydust/src/ffi.h
 
       - name: Create a symlink to the pydust library (Windows)
-        if: runner.os == "Windows"
+        if: runner.os == 'Windows'
         shell: cmd
         run: |
             for /f "delims=" %%i in ('python -c "import sysconfig; print(sysconfig.get_paths()[\"platlib\"]) "') do set PLATLIB=%%i
