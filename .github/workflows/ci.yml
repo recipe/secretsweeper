@@ -69,9 +69,11 @@ jobs:
             dir pydust
 
       - name: Poetry Build
+        env:
+          CARGO_CFG_TARGET_OS: windows
         run: |
             uv run poetry build -v
-            ls -al ./dist
+            dir dist
 
       - name: Ruff check
         run: uv run ruff check .
