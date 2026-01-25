@@ -17,7 +17,8 @@ packages = [{ include = "secretsweeper" }]
 include = [
     { path = "src/", format = "sdist" },
     { path = "secretsweeper/*.so", format = "wheel" },
-    "secretsweeper/*.pyi"
+    "secretsweeper/*.pyi",
+    "test",
 ]
 
 [tool.poetry.build]
