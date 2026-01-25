@@ -52,9 +52,8 @@ jobs:
           CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=${{ runner.arch == 'X64' && '15.7' || '14.8' }}
           CIBW_BUILD_FRONTEND: pip
 #           CIBW_BUILD_VERBOSITY: 1
-          CIBW_TEST_COMMAND: "pip install pytest && pytest"
+          CIBW_TEST_COMMAND: "pip install pytest && pytest {project}/tests"
           CIBW_SKIP: "cp3??t-*"
-          CIBW_TEST_SOURCE: tests
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
