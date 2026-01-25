@@ -20,4 +20,3 @@ wheels/
 *.so
 /build.zig
 /pydust.build.zig
-/pydust
