@@ -46,7 +46,7 @@ jobs:
           CIBW_ARCHS_LINUX: ${{ runner.arch == 'X64' && 'auto ppc64le s390x armv7l riscv64' || 'auto' }}
           CIBW_BUILD_FRONTEND: pip
           CIBW_BUILD_VERBOSITY: 1
-          CIBW_TEST_COMMAND: "pytest test"
+          CIBW_TEST_COMMAND: "pip install pytest && pytest test"
           CIBW_SKIP: "cp3??t-*"
 
       - name: Upload artifacts
