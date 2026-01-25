@@ -13,12 +13,14 @@ version = "0.0.1a1"
 description = "Fast, in-memory secret-sanitizing CPython module written in Zig, designed for speed."
 authors = ["Vitaliy Demidov <notifications.recipient@gmail.com>"]
 readme = "README.md"
-packages = [{ include = "secretsweeper" }]
+packages = [
+    { include = "secretsweeper" },
+]
 include = [
     { path = "src/", format = "sdist" },
     { path = "secretsweeper/*.so", format = "wheel" },
     "secretsweeper/*.pyi",
-    "test",
+    "tests/*",
 ]
 
 [tool.poetry.build]
