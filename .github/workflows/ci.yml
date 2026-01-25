@@ -49,8 +49,7 @@ jobs:
 #           # armv7l - pydust error: pointer type child 'i64' cannot cast into pointer type child 'isize'
 #           # i686 - thread 81 panic: integer overflow
 #           # riscv64 - error
-          CIBW_ENVIRONMENT_MACOS: >
-            MACOSX_DEPLOYMENT_TARGET=${{ matrix.arch == 'x86_64' && '10.13' || '11.0' }}
+          CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=${{ runner.arch == 'X64' && '15.7' || '14.8' }}
           CIBW_BUILD_FRONTEND: pip
 #           CIBW_BUILD_VERBOSITY: 1
           CIBW_TEST_COMMAND: "pip install pytest && pytest /project/tests"
