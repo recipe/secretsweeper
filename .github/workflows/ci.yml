@@ -43,9 +43,10 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.3.1
         env:
-          CIBW_ARCHS_LINUX: ${{ runner.arch == 'X64' && 'armv7l riscv64' || 'auto' }}
+          CIBW_ARCHS_LINUX: ${{ runner.arch == 'X64' && 'i686 riscv64' || 'auto' }}
           # ppc64le - segmentation fault
           # s390x - thread 176 panic: reached unreachable code
+          # armv7l - pydust error: pointer type child 'i64' cannot cast into pointer type child 'isize'
           CIBW_BUILD_FRONTEND: pip
           CIBW_BUILD_VERBOSITY: 1
           CIBW_TEST_COMMAND: "pip install pytest && pytest /project/tests"
