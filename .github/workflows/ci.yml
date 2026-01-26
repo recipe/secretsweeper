@@ -83,14 +83,14 @@ jobs:
         with:
           pattern: wheels-*
           merge-multiple: true
-          path: wheelhouse
+          path: dist
 
       - name: Display structure of downloaded files
-        run: ls -lh wheelhouse
+        run: ls -lh dist
 
       - uses: pypa/gh-action-pypi-publish@release/v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
           skip-existing: true
-          user: ${{ secrets.PYPI_USERNAME }}
-          password: ${{ secrets.PYPI_PASSWORD }}
+#           user: ${{ secrets.PYPI_USERNAME }}
+#           password: ${{ secrets.PYPI_PASSWORD }}
