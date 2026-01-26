@@ -4,7 +4,7 @@ version = "0.0.1a1"
 requires-python = ">=3.11"
 
 [build-system]
-requires = ["poetry-core", "ziggy-pydust==0.26.0"]
+requires = ["poetry-core==2.2.1", "ziggy-pydust==0.26.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
@@ -17,7 +17,7 @@ packages = [{ include = "secretsweeper" }]
 include = [
     { path = "src/", format = "sdist" },
     { path = "secretsweeper/*.so", format = "wheel" },
-    "secretsweeper/*.pyi"
+    "secretsweeper/*.pyi",
 ]
 
 [tool.poetry.build]
