@@ -92,5 +92,5 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           skip-existing: true
-#           user: ${{ secrets.PYPI_USERNAME }}
-#           password: ${{ secrets.PYPI_PASSWORD }}
+          user: ${{ secrets.PYPI_USERNAME }}
+          password: ${{ secrets.PYPI_PASSWORD }}
