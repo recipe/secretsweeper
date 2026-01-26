@@ -15,6 +15,24 @@ permissions:
   contents: read
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Ruff format
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: "format --check ."
+
+      - name: Ruff check
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: "check ."
+
   build:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -22,8 +40,8 @@ jobs:
       fail-fast: false
       matrix:
         os:
-#           - ubuntu-latest
-#           - ubuntu-24.04-arm
+          - ubuntu-latest
+          - ubuntu-24.04-arm
           - macos-15-intel
           - macos-14
 #           - windows-latest
@@ -34,24 +52,12 @@ jobs:
         with:
           fetch-depth: 0
 
-#       - name: Set up QEMU
-#         if: runner.os == 'Linux' && runner.arch == 'X64'
-#         uses: docker/setup-qemu-action@v3
-#         with:
-#           platforms: all
-
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.3.1
         env:
-#           CIBW_ARCHS_LINUX: ${{ runner.arch == 'X64' && 'auto riscv64 ppc64le armv7l i686 s390x' || 'auto' }}
-#           # ppc64le - segmentation fault
-#           # s390x - thread 176 panic: reached unreachable code
-#           # armv7l - pydust error: pointer type child 'i64' cannot cast into pointer type child 'isize'
-#           # i686 - thread 81 panic: integer overflow
-#           # riscv64 - error
           CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=${{ runner.arch == 'X64' && '15.7' || '14.8' }}
           CIBW_BUILD_FRONTEND: pip
-#           CIBW_BUILD_VERBOSITY: 1
+          CIBW_BUILD_VERBOSITY: 0
           CIBW_TEST_COMMAND: "pip install pytest && pytest {project}/tests"
           CIBW_SKIP: "cp3??t-*"
 
