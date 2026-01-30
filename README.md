@@ -25,6 +25,12 @@ SecretSweeper as a Python library that can mask or remove known secrets from the
 - Can wrap a file descriptor to read and sanitize data directly from the stream.
 - Works well with multi-line secrets.
 
+## Installation
+
+```bash
+pip install secretsweeper 
+```
+
 ## Example
 
 To mask secrets from the `bytes` literal:
