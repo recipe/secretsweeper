@@ -1,7 +1,8 @@
 [project]
 name = "secretsweeper"
-version = "0.0.1a1"
+version = "0.0.1a2"
 requires-python = ">=3.11"
+license = "GPL-3.0-only"
 
 [build-system]
 requires = ["poetry-core==2.2.1", "ziggy-pydust==0.26.0"]
@@ -9,7 +10,6 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "secretsweeper"
-version = "0.0.1a1"
 description = "Fast, in-memory secret-sanitizing CPython module written in Zig, designed for speed."
 authors = ["Vitaliy Demidov <notifications.recipient@gmail.com>"]
 readme = "README.md"
