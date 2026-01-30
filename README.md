@@ -1,4 +1,3 @@
-<div align="center">
 
 ```zig
 ▞▀▖            ▐  ▞▀▖                   
@@ -7,18 +6,12 @@
 ▝▀ ▝▀▘▝▀ ▘  ▝▀▘ ▀ ▝▀  ▘▘ ▝▀▘▝▀▘▌  ▝▀▘▘  
 ```
 
-</div>
-
-<div align="center">
-
 [![CI](https://github.com/recipe/secretsweeper/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/recipe/secretsweeper/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/recipe/secretsweeper.svg)](https://github.com/recipe/secretsweeper/blob/main/LICENSE)
 [![PyPI Version](https://img.shields.io/pypi/v/secretsweeper.svg)](https://pypi.org/project/secretsweeper/)
 [![Compatiable Python versions](https://img.shields.io/pypi/pyversions/secretsweeper.svg?style=flat-square)](https://pypi.python.org/pypi/secretsweeper/)
 
 SecretSweeper is a fast, in-memory secret-sanitizing Python module written in Zig, designed for speed.
-
-</div>
 
 ---
 
@@ -42,7 +35,7 @@ To mask secrets from the `bytes` literal:
 >>> print(secretsweeper.mask(b"Hello, Secret Sweeper!", (b'Secret', b'Sweeper')))
 >>>  b'Hello, ****** *******!' 
 ```
-Secrets may be completely removed by providing a third argument, limit=0, which specifies the maximum number of masking characters:
+Secrets may be completely removed by providing a third argument, `limit=0`, which specifies the maximum number of masking characters:
 
 ```shell 
 » python          
