@@ -1,4 +1,3 @@
-
 ```zig
 ▞▀▖            ▐  ▞▀▖                   
 ▚▄ ▞▀▖▞▀▖▙▀▖▞▀▖▜▀ ▚▄ ▌  ▌▞▀▖▞▀▖▛▀▖▞▀▖▙▀▖
@@ -37,19 +36,19 @@ To mask secrets from the `bytes` literal:
 
 ```shell 
 » python          
->>> import secretsweeper
->>> print(secretsweeper.mask(b"Hello, Secret Sweeper!", (b'Secret', b'Sweeper')))
->>>  b'Hello, ****** *******!' 
+import secretsweeper
+print(secretsweeper.mask(b"Hello, Secret Sweeper!", (b'Secret', b'Sweeper')))
+b'Hello, ****** *******!' 
 ```
 Secrets may be completely removed by providing a third argument, `limit=0`, which specifies the maximum number of masking characters:
 
 ```shell 
 » python          
->>> import secretsweeper
->>> print(secretsweeper.mask(b"Moby Dick!", [b" Dick"], limit=0))
->>> b'Moby!' 
+import secretsweeper
+print(secretsweeper.mask(b"Moby Dick!", [b" Dick"], limit=0))
+b'Moby!' 
 ```
-To effectively mask a large text:
+To effectively mask all secrets in a large text:
 
 ```python 
 import urllib.request
@@ -65,7 +64,7 @@ with urllib.request.urlopen(url) as src, open("sanitized.txt", "wb") as dest:
         dest.write(line)
 ```
 
-More examples in [tests](tests/test_secretsweeper.py).
+More examples are in [tests](tests/test_secretsweeper.py).
 
 ## Getting involved
 
