@@ -48,7 +48,7 @@ jobs:
           - ubuntu-24.04-arm
           - macos-15-intel
           - macos-14
-#           - windows-latest
+          - windows-latest
 #           - windows-11-arm
     steps:
       - name: Checkout
