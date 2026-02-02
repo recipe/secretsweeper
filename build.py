@@ -5,9 +5,6 @@ import sysconfig
 import typing
 from pathlib import Path
 
-import pydust
-from pydust.build import build
-
 
 def _ensure_ld_library() -> None:
     """
@@ -19,6 +16,13 @@ def _ensure_ld_library() -> None:
 
     if sysconfig.get_config_var("LDLIBRARY") is None:
         sysconfig._CONFIG_VARS["LDLIBRARY"] = f"python{sys.version_info.major}{sys.version_info.minor}.lib"
+
+
+_ensure_ld_library()  # MUST happen before importing pydust
+
+
+import pydust  # noqa: E402
+from pydust.build import build  # noqa: E402
 
 
 @contextlib.contextmanager
@@ -33,8 +37,6 @@ def ensure_ffi_location() -> typing.Iterator[None]:
     yield
     shutil.rmtree(Path("pydust"))
 
-
-_ensure_ld_library()
 
 with ensure_ffi_location():
     build()
