@@ -28,6 +28,7 @@ from pydust.build import build  # noqa: E402
 
 # Patch Windows path pydust bug in build.zig
 if sys.platform == "win32":
+
     def _generate_build_zig(fileobj: typing.TextIO, conf=pydust_config):
         b = buildzig.Writer(fileobj)
 
