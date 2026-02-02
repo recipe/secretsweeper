@@ -1,6 +1,4 @@
 import contextlib
-import ntpath
-import os
 import shutil
 import sys
 import sysconfig
@@ -30,16 +28,6 @@ from pydust.build import build  # noqa: E402
 
 # Patch Windows path pydust bug in build.zig
 if sys.platform == "win32":
-    old_relpath = ntpath.relpath
-
-    def safe_relpath(path, start=os.curdir):
-        try:
-            return old_relpath(path, start)
-        except ValueError:
-            # cross-drive fallback
-            return path.replace("\\", "/")
-
-    ntpath.relpath = safe_relpath
 
     def _generate_build_zig(fileobj: typing.TextIO, conf=pydust_config):
         b = buildzig.Writer(fileobj)

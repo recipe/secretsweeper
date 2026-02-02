@@ -40,6 +40,9 @@ jobs:
     name: Build wheels on ${{ matrix.os }}
     needs: [lint]
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: ${{ runner.os == 'Windows' && 'C:/secretsweeper' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -55,6 +58,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          path: ${{ runner.os == 'Windows' && 'C:/secretsweeper' || '' }}
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.3.1
