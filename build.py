@@ -1,5 +1,4 @@
 import contextlib
-import os
 import shutil
 import sys
 import sysconfig
@@ -29,16 +28,6 @@ from pydust.build import build  # noqa: E402
 
 # Patch Windows path pydust bug in build.zig
 if sys.platform == "win32":
-    # Save the original function
-    original_addPythonModule = pydust.buildzig.addPythonModule
-
-    def _addPythonModule(mod):
-        # Force absolute path for root_source_file
-        mod["root_source_file"] = os.path.abspath(mod["root_source_file"]).replace("\\", "/")
-        return original_addPythonModule(mod)
-
-    pydust.buildzig.addPythonModule = _addPythonModule
-
     def _generate_build_zig(fileobj: typing.TextIO, conf=pydust_config):
         b = buildzig.Writer(fileobj)
 
