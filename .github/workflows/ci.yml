@@ -42,7 +42,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     defaults:
       run:
-        working-directory: ${{ runner.os == 'Windows' && 'C:/secretsweeper' || '' }}
+        working-directory: ${{ matrix.os == 'windows-latest' && 'C:/secretsweeper' || '' }}
     strategy:
       fail-fast: false
       matrix:
