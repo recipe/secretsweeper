@@ -29,13 +29,15 @@ from pydust.build import build  # noqa: E402
 
 # Patch Windows path pydust bug in build.zig
 if sys.platform == "win32":
-    # patch b.path(...) to return absolute paths instead of relpath
-    original_b_path = pydust.buildzig.b.path
+    # Save the original function
+    original_addPythonModule = pydust.buildzig.addPythonModule
 
-    def absolute_b_path(path):
-        return os.path.abspath(path).replace("\\", "/")  # Zig likes forward slashes
+    def _addPythonModule(mod):
+        # Force absolute path for root_source_file
+        mod["root_source_file"] = os.path.abspath(mod["root_source_file"]).replace("\\", "/")
+        return original_addPythonModule(mod)
 
-    pydust.buildzig.b.path = absolute_b_path
+    pydust.buildzig.addPythonModule = _addPythonModule
 
     def _generate_build_zig(fileobj: typing.TextIO, conf=pydust_config):
         b = buildzig.Writer(fileobj)
