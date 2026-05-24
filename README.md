@@ -1,5 +1,6 @@
 <div align="center">
-  <img src="./secret-sweeper.png" alt="SecretSweeper" width="260" style="display:block; margin-bottom: 10pt;"/>
+  <img src="./secret-sweeper.png" alt="SecretSweeper" width="260"/>
+  <p>&nbsp;</p>
 
 [![CI](https://github.com/recipe/secretsweeper/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/recipe/secretsweeper/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/recipe/secretsweeper.svg)](https://github.com/recipe/secretsweeper/blob/main/LICENSE)
