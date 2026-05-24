@@ -15,10 +15,10 @@ SecretSweeper is a ⚡ fast, in-memory secret-sanitizing Python module written i
 ## About
 
 > 💡 Just want to remove all secret variables from the terraform plan output or any large file? SecretSweeper is here to help!
- 
-SecretSweeper as a Python library that can mask or remove known secrets from the byte literals, files, or any file-like objects (`io.BinaryIO`).
 
-- Written in Zig and has no third party dependencies. It leverages the stability of the Python Limited C API to create a single binary extension.
+SecretSweeper is a Python library that can mask or remove known secrets from byte literals, files, or any file-like objects (`io.BinaryIO`). 
+
+- Written in Zig with no third-party dependencies. Leverages the stability of the Python Limited C API to create a single binary extension.
 - Can wrap a file descriptor to read and sanitize data directly from the stream.
 - Works well with multi-line secrets.
 
