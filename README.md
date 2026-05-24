@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./secret-sweeper.png" alt="SecretSweeper" width="260"/>
+  <img src="https://raw.githubusercontent.com/recipe/secretsweeper/main/secret-sweeper.png" alt="SecretSweeper" width="260"/>
   <p>&nbsp;</p>
 
 [![CI](https://github.com/recipe/secretsweeper/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/recipe/secretsweeper/actions/workflows/ci.yml)
