@@ -1,4 +1,4 @@
-<p align="center" style="padding-top: 14pt; padding-bottom: 20pt;">
+<div align="center">
   <img src="./secret-sweeper.png" alt="SecretSweeper" width="260"/>
 
 [![CI](https://github.com/recipe/secretsweeper/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/recipe/secretsweeper/actions/workflows/ci.yml)
@@ -7,7 +7,7 @@
 [![Compatiable Python versions](https://img.shields.io/pypi/pyversions/secretsweeper.svg?style=flat-square)](https://pypi.python.org/pypi/secretsweeper/)
 
 SecretSweeper is a fast ⚡, in-memory secret-sanitizing Python module written in Zig, designed for speed 🚀.
-</p>
+</div>
 
 ---
 
