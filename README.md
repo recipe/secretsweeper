@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./secret-sweeper.png" alt="SecretSweeper" width="260" style="margin-top: 14pt; margin-bottom: 20pt;"/>
+  <img src="./secret-sweeper.png" alt="SecretSweeper" width="260" style="padding-top: 14pt; padding-bottom: 20pt;"/>
 
 [![CI](https://github.com/recipe/secretsweeper/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/recipe/secretsweeper/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/recipe/secretsweeper.svg)](https://github.com/recipe/secretsweeper/blob/main/LICENSE)
@@ -13,7 +13,7 @@ SecretSweeper is a fast ⚡, in-memory secret-sanitizing Python module written i
 
 ## About
 
-> Just want to remove all secret variables from the terraform plan output or any large file? SecretSweeper is here to help!
+> 💡 Just want to remove all secret variables from the terraform plan output or any large file? SecretSweeper is here to help!
  
 SecretSweeper as a Python library that can mask or remove known secrets from the byte literals, files, or any file-like objects (`io.BinaryIO`).
 
@@ -29,7 +29,7 @@ pip install secretsweeper
 
 ## Examples
 
-To mask secrets from the `bytes` literal:
+✨ To mask secrets from the `bytes` literal:
 
 ```shell 
 » python          
@@ -70,6 +70,6 @@ If something here sparks your curiosity, jump in and help shape it. Open an issu
 
 ## License
 
-This is free software: you can redistribute it and/or modify it under the terms of the MIT License. A copy of this license is provided in [LICENSE](LICENSE).
+🪪 This is free software: you can redistribute it and/or modify it under the terms of the MIT License. A copy of this license is provided in [LICENSE](LICENSE).
 
 
