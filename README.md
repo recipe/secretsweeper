@@ -7,7 +7,7 @@
 [![PyPI Version](https://img.shields.io/pypi/v/secretsweeper.svg)](https://pypi.org/project/secretsweeper/)
 [![Compatiable Python versions](https://img.shields.io/pypi/pyversions/secretsweeper.svg?style=flat-square)](https://pypi.python.org/pypi/secretsweeper/)
 
-SecretSweeper is a fast ⚡, in-memory secret-sanitizing Python module written in Zig, designed for speed 🚀.
+SecretSweeper is a ⚡ fast, in-memory secret-sanitizing Python module written in Zig, designed for 🚀 speed.
 </div>
 
 ---
