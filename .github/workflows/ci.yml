@@ -143,6 +143,9 @@ jobs:
       - name: Display structure of downloaded files
         run: ls -lh dist
 
-      - uses: pypa/gh-action-pypi-publish@6733eb7d741f0b11ec6a39b58540dab7590f9b7d # v1.14.0
+      # Pinned by tag, not SHA: this is a Docker action that pulls its image from
+      # GHCR using the ref as the image tag, and pypa only publishes tag-named
+      # images (pinning the SHA fails with "manifest unknown").
+      - uses: pypa/gh-action-pypi-publish@v1.14.0
         with:
           skip-existing: true
