@@ -155,6 +155,17 @@ def test_stream_wrapper_readall() -> None:
     assert result == b"first ****" + NL + b"second ****" + NL + b"third ****" + NL
 
 
+def test_stream_wrapper_reminder_is_bounded() -> None:
+    # A stream of b"a" against the pattern b"ab" keeps the automaton away from its
+    # starting state; the wrapper must still emit data promptly and retain at most
+    # a longest-pattern-prefix tail instead of buffering the whole stream.
+    stream = secretsweeper.StreamWrapper(io.BytesIO(b"a" * 1000), (b"ab",))
+    first = stream.read(100)
+    assert first == b"a" * 99
+    assert stream._wrapper.get_reminder() == b"a"
+    assert first + stream.readall() == b"a" * 1000
+
+
 def test_stream_wrapper_bytes_io() -> None:
     s = io.BytesIO(initial_bytes=b"funny")
     stream = secretsweeper.StreamWrapper(s, (b"fun",), limit=0)

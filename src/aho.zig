@@ -12,6 +12,8 @@ const Node = struct {
     len: usize = 0,
     /// A search pattern identifier.
     id: usize = 0,
+    /// The trie depth of this node: the length of the pattern prefix it represents.
+    depth: usize = 0,
 };
 
 /// Aho-Corasick automaton class.
@@ -103,7 +105,8 @@ pub const Aho = struct {
             if (self.nodes.items[u].move[c] == 0) {
                 // Insert a new node to a trie.
                 self.total += 1;
-                try self.nodes.append(self.allocator, Node{});
+                const child_depth = self.nodes.items[u].depth + 1;
+                try self.nodes.append(self.allocator, Node{ .depth = child_depth });
                 self.nodes.items[u].move[c] = self.total;
             }
             // Transition to a new node.
@@ -173,14 +176,9 @@ pub const Aho = struct {
             @memcpy(buf[0..reminder_len], self.reminder.?[0..reminder_len]);
             buf_len = reminder_len;
         }
-        // The most recent position in the buffer where the automaton was in the starting state.
-        var buf_last_start_state_pos: isize = -1;
         for (args.text, 0..) |c, pos| {
             // Walk the automaton.
             self.state = self.nodes.items[self.state].move[c];
-            if (self.state == 0) {
-                buf_last_start_state_pos = @intCast(buf_len);
-            }
             // Copy from input character by character.
             buf[buf_len] = c;
             buf_len += 1;
@@ -218,12 +216,16 @@ pub const Aho = struct {
         var new_reminder_len: usize = 0;
         if (args.is_streaming) {
             self.reset_reminder();
-            if (buf_last_start_state_pos + 1 < buf_len) {
-                new_reminder_len = @intCast(@as(isize, @intCast(buf_len)) - buf_last_start_state_pos - 1);
+            // Only the current state's trie depth of trailing bytes can still belong to
+            // a future match, so retaining more would grow the reminder without bound
+            // on inputs that keep the automaton away from the starting state.
+            // Masking may have shrunk the buffer below that depth; retain what exists.
+            new_reminder_len = @min(self.nodes.items[self.state].depth, buf_len);
+            if (new_reminder_len > 0) {
                 self.reminder = try self.allocator.alloc(u8, new_reminder_len);
                 @memcpy(self.reminder.?, buf[buf_len - new_reminder_len..buf_len]);
             }
-            defer self.last_occur.pos = self.last_occur.pos - @as(isize, @intCast(args.text.len));
+            self.last_occur.pos = self.last_occur.pos - @as(isize, @intCast(args.text.len));
         }
         if (buf_len < input_len or new_reminder_len > 0) {
             buf = try self.allocator.realloc(buf, buf_len - new_reminder_len);
@@ -318,4 +320,41 @@ test "Aho" {
         try testing.expectEqualStrings(expected_reminder[i], ac.reminder orelse "");
     }
     try testing.expectEqualStrings("*", ac.reminder orelse "");
+}
+
+test "Aho reminder is bounded by the longest pattern prefix" {
+    var gpa = std.heap.DebugAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    var ac = try Aho.init(allocator);
+    defer ac.deinit();
+    _ = try ac.insert("ab");
+    try ac.build();
+
+    // The automaton never returns to the starting state on this input, but only
+    // the trailing "a" can still be part of a match: everything else is emitted.
+    var expected: []const u8 = "aaa";
+    for (0..3) |i| {
+        const buffer = try ac.mask(.{ .text = "aaaa", .is_streaming = true });
+        defer allocator.free(buffer);
+        if (i > 0) {
+            // The retained "a" is prepended, so full chunks are emitted from now on.
+            expected = "aaaa";
+        }
+        try testing.expectEqualStrings(expected, buffer);
+        try testing.expectEqualStrings("a", ac.reminder orelse "");
+    }
+
+    // The retained "a" combines with a "b" in the next chunk into a match.
+    // The stars are withheld while a following pattern could still overlap them.
+    const masked = try ac.mask(.{ .text = "b", .is_streaming = true });
+    defer allocator.free(masked);
+    try testing.expectEqualStrings("", masked);
+    try testing.expectEqualStrings("**", ac.reminder orelse "");
+
+    const rest = try ac.mask(.{ .text = "c", .is_streaming = true });
+    defer allocator.free(rest);
+    try testing.expectEqualStrings("**c", rest);
+    try testing.expectEqualStrings("", ac.reminder orelse "");
 }
