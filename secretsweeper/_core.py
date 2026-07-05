@@ -81,12 +81,13 @@ def _mask(automaton: int, text: bytes, limit: int, *, is_streaming: bool) -> byt
     status = _lib.ss_mask(automaton, text, len(text), limit, is_streaming, ctypes.byref(out_ptr), ctypes.byref(out_len))
     if status != 0:
         raise MemoryError("failed to mask the input")
-    if not out_ptr:
+    ptr = out_ptr.value
+    if not ptr:
         return b""
     try:
-        return ctypes.string_at(out_ptr.value, out_len.value)
+        return ctypes.string_at(ptr, out_len.value)
     finally:
-        _lib.ss_free(out_ptr, out_len.value)
+        _lib.ss_free(ptr, out_len.value)
 
 
 class _StreamWrapper:
@@ -103,8 +104,8 @@ class _StreamWrapper:
         self._automaton = _build_automaton(patterns)
 
     def __del__(self, _destroy=_lib.ss_destroy):
-        if automaton := getattr(self, "_automaton", None):
-            self._automaton = None
+        if automaton := getattr(self, "_automaton", 0):
+            self._automaton = 0
             _destroy(automaton)
 
     def _id(self) -> int:

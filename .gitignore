@@ -13,6 +13,7 @@ wheels/
 .*
 !.gitignore
 !.github
+!.pre-commit-config.yaml
 
 # Build files
 /zig-out

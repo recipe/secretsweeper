@@ -49,7 +49,6 @@ def run_zig(args: list[str], cwd: str) -> None:
 
 class ZigBuildHook(BuildHookInterface):
     def initialize(self, version: str, build_data: dict) -> None:
-        run_zig(["version"], cwd=self.root)
         target = windows_target()
         try:
             target_options = [f"-Dtarget={target}"] if target else []

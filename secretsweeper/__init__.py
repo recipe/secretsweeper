@@ -51,6 +51,8 @@ class StreamWrapper(io.RawIOBase):
         :param size: If size is specified, at most size bytes will be read.
         :return: The line with masked patterns. The line terminator is always b'\n' for binary files.
         """
+        if size is None:
+            size = -1
         while carry := self._stream.readline(size):
             if res := self._wrapper.masking_read(carry):
                 return res
