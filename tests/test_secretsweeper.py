@@ -7,6 +7,11 @@ import pytest
 
 import secretsweeper
 
+FIXTURES_DIR = pathlib.Path(__file__).parent / "fixtures"
+# Git may check fixtures out with CRLF line endings (e.g. on Windows with core.autocrlf),
+# so tests reading fixture files build patterns and expected values from the actual newline.
+NL = b"\r\n" if b"\r\n" in (FIXTURES_DIR / "file.txt").read_bytes() else b"\n"
+
 
 def _generator() -> typing.Iterator[bytes]:
     yield b"a"
@@ -136,18 +141,18 @@ def test_stream_wrapper_init_and_del() -> None:
 
 def test_stream_wrapper_iter() -> None:
     chunk = []
-    with open(pathlib.Path(__file__).parent / "fixtures" / "file.txt", "rb") as f:
+    with open(FIXTURES_DIR / "file.txt", "rb") as f:
         stream = secretsweeper.StreamWrapper(f, (b"line",))
         for line in stream:
             chunk.append(line)
-    assert b"".join(chunk) == b"first ****\nsecond ****\nthird ****\n"
+    assert b"".join(chunk) == b"first ****" + NL + b"second ****" + NL + b"third ****" + NL
 
 
 def test_stream_wrapper_readall() -> None:
-    with open(pathlib.Path(__file__).parent / "fixtures" / "file.txt", "rb") as f:
+    with open(FIXTURES_DIR / "file.txt", "rb") as f:
         stream = secretsweeper.StreamWrapper(f, (b"line",))
         result = stream.readall()
-    assert result == b"first ****\nsecond ****\nthird ****\n"
+    assert result == b"first ****" + NL + b"second ****" + NL + b"third ****" + NL
 
 
 def test_stream_wrapper_bytes_io() -> None:
@@ -159,8 +164,10 @@ def test_stream_wrapper_bytes_io() -> None:
 
 def test_stream_wrapper_read_limited_size() -> None:
     def _iter() -> typing.Iterator[bytes]:
-        with open(pathlib.Path(__file__).parent / "fixtures" / "file.txt", "rb") as f:
-            stream = secretsweeper.StreamWrapper(f, (b"st line\nsecond line\nthird line\n",), limit=5)
+        with open(FIXTURES_DIR / "file.txt", "rb") as f:
+            stream = secretsweeper.StreamWrapper(
+                f, (b"st line" + NL + b"second line" + NL + b"third line" + NL,), limit=5
+            )
             # Note: We don't guarantee that the buffer won't exceed the provided size.
             while buf := stream.read(size=3):
                 yield buf
@@ -171,21 +178,32 @@ def test_stream_wrapper_read_limited_size() -> None:
 @pytest.mark.parametrize(
     ("fixture_file", "patterns", "limit", "expected"),
     [
-        ("file", (b"line\nthird",), None, b"first line\nsecond ********** line\n"),
+        # the mask length equals the pattern length, which depends on the newline width.
+        (
+            "file",
+            (b"line" + NL + b"third",),
+            None,
+            b"first line" + NL + b"second " + b"*" * len(b"line" + NL + b"third") + b" line" + NL,
+        ),
         # overlapping multiline pattern.
-        ("file", (b"ne\nse", b"second"), 3, b"first li*** line\nthird line\n"),
+        ("file", (b"ne" + NL + b"se", b"second"), 3, b"first li*** line" + NL + b"third line" + NL),
         # the first pattern is near the limit and next overlapping pattern is less than the limit.
-        ("file", (b"ne\nse", b"second"), 4, b"first li**** line\nthird line\n"),
+        ("file", (b"ne" + NL + b"se", b"second"), 4, b"first li**** line" + NL + b"third line" + NL),
         # multiline pattern for more than two lines.
-        ("file", (b"st line\nsecond line\nthird ",), 1, b"fir*line\n"),
+        ("file", (b"st line" + NL + b"second line" + NL + b"third ",), 1, b"fir*line" + NL),
         # multiline pattern for more than two lines up to the end of the input.
-        ("file", (b"st line\nsecond line\nthird line\n",), 1, b"fir*"),
+        ("file", (b"st line" + NL + b"second line" + NL + b"third line" + NL,), 1, b"fir*"),
         # removing overlapping patterns.
-        ("file", (b"third", b"ne\n", b"e\n", b" line\n", b"st line\nsecond line\nth"), 0, b"fir"),
+        (
+            "file",
+            (b"third", b"ne" + NL, b"e" + NL, b" line" + NL, b"st line" + NL + b"second line" + NL + b"th"),
+            0,
+            b"fir",
+        ),
         # non overlapping - 1 asterisks for every pattern.
-        ("file", (b"first line\n", b"second line\n", b"third line\n"), 1, b"***"),
+        ("file", (b"first line" + NL, b"second line" + NL, b"third line" + NL), 1, b"***"),
         # overlapping - 1 asterisks in total for all patterns.
-        ("file", (b"first line\ns", b"second line\nt", b"third line\n"), 1, b"*"),
+        ("file", (b"first line" + NL + b"s", b"second line" + NL + b"t", b"third line" + NL), 1, b"*"),
     ],
 )
 def test_stream_wrapper(
@@ -194,7 +212,7 @@ def test_stream_wrapper(
     if limit is None:
         limit = secretsweeper.MAX_NUMBER_OF_STARS
     chunk = []
-    with open(pathlib.Path(__file__).parent / "fixtures" / f"{fixture_file}.txt", "rb") as f:
+    with open(FIXTURES_DIR / f"{fixture_file}.txt", "rb") as f:
         stream = secretsweeper.StreamWrapper(f, patterns, limit=limit)
         for line in stream:
             chunk.append(line)
