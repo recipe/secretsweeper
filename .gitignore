@@ -13,10 +13,11 @@ wheels/
 .*
 !.gitignore
 !.github
+!.pre-commit-config.yaml
 
 # Build files
 /zig-out
 /.zig-cache
 *.so
-/build.zig
-/pydust.build.zig
+*.dylib
+*.dll

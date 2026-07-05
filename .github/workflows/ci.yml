@@ -20,21 +20,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
 
       - name: Ruff format
-        uses: astral-sh/ruff-action@v3
+        uses: astral-sh/ruff-action@146cd51f235777a9bc491eead18e0d5a4b05406a # v3
         with:
           version: "0.13.3"
           args: "format --check ."
 
       - name: Ruff check
-        uses: astral-sh/ruff-action@v3
+        uses: astral-sh/ruff-action@146cd51f235777a9bc491eead18e0d5a4b05406a # v3
         with:
           version: "0.13.3"
           args: "check ."
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: "0.8.22"
+
+      - name: Type check
+        run: uv sync --no-install-project && uv run --no-sync ty check
 
   build:
     name: Build wheels on ${{ matrix.os }}
@@ -48,25 +56,39 @@ jobs:
           - ubuntu-24.04-arm
           - macos-15-intel
           - macos-14
-#           - windows-latest
-#           - windows-11-arm
+          - windows-latest
+          - windows-11-arm
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
 
+      # The native aarch64-windows zig crashes on any compilation (ziglang/zig#16665),
+      # so run the x86_64 zig under Windows x64 emulation; the wheel's DLL is still
+      # cross-compiled for aarch64.
+      - name: Install x86_64 Zig for Windows ARM64
+        if: matrix.os == 'windows-11-arm'
+        shell: pwsh
+        run: |
+          $expected = "68659eb5f1e4eb1437a722f1dd889c5a322c9954607f5edcf337bc3684a75a7e"
+          Invoke-WebRequest -Uri https://ziglang.org/download/0.16.0/zig-x86_64-windows-0.16.0.zip -OutFile $env:RUNNER_TEMP\zig.zip
+          $actual = (Get-FileHash "$env:RUNNER_TEMP\zig.zip" -Algorithm SHA256).Hash.ToLower()
+          if ($actual -ne $expected) { throw "zig.zip SHA-256 mismatch: expected $expected, got $actual" }
+          Expand-Archive $env:RUNNER_TEMP\zig.zip -DestinationPath $env:RUNNER_TEMP\zig
+          "SECRETSWEEPER_ZIG=$env:RUNNER_TEMP\zig\zig-x86_64-windows-0.16.0\zig.exe" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: Build wheels
-        uses: pypa/cibuildwheel@v3.3.1
+        uses: pypa/cibuildwheel@c6c39891d69e0d1e7448c727f68b7b4d5e660e7f # v3.3.1
         env:
           CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=${{ runner.arch == 'X64' && '15.7' || '14.8' }}
           CIBW_BUILD_FRONTEND: pip
           CIBW_BUILD_VERBOSITY: 0
           CIBW_TEST_COMMAND: "pip install pytest && pytest {project}/tests"
-          CIBW_SKIP: "cp3??t-*"
+          CIBW_SKIP: "*-win32"
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: wheels-${{ matrix.os }}-${{ strategy.job-index }}
           path: ./wheelhouse/*.whl
@@ -78,28 +100,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.13"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
         with:
           version: "0.8.22"
 
-      - name: Install dependencies
-        run: uv sync --no-install-project
-
       - name: Build sdist package
-        run: uv run poetry build -f sdist && ls -al dist
+        run: uv build --sdist && ls -al dist
 
       - name: Upload sdist package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: wheels-sdist
           path: ./dist/*.tar.gz
@@ -110,9 +129,12 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     needs: [build, build-sdist]
     runs-on: ubuntu-latest
+    permissions:
+      # Required for PyPI Trusted Publishing (OIDC).
+      id-token: write
 
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: wheels-*
           merge-multiple: true
@@ -121,9 +143,6 @@ jobs:
       - name: Display structure of downloaded files
         run: ls -lh dist
 
-      - uses: pypa/gh-action-pypi-publish@release/v1
-        if: startsWith(github.ref, 'refs/tags/')
+      - uses: pypa/gh-action-pypi-publish@6733eb7d741f0b11ec6a39b58540dab7590f9b7d # v1.14.0
         with:
           skip-existing: true
-          user: ${{ secrets.PYPI_USERNAME }}
-          password: ${{ secrets.PYPI_PASSWORD }}

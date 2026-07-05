@@ -18,7 +18,7 @@ SecretSweeper is a ⚡ fast, in-memory secret-sanitizing Python module written i
 
 SecretSweeper is a Python library that can mask or remove known secrets from byte literals, files, or any file-like objects (`io.BinaryIO`). 
 
-- Written in Zig with no third-party dependencies. Leverages the stability of the Python Limited C API to create a single binary extension.
+- Written in Zig with no third-party dependencies. The core is a plain C-ABI shared library driven through the standard library `ctypes` module, so a single binary works across Python versions.
 - Can wrap a file descriptor to read and sanitize data directly from the stream.
 - Works well with multi-line secrets.
 

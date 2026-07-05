@@ -1,9 +1,10 @@
 import io
 import typing
 
-from ._core import *  # noqa: F403
+from . import _core
+from ._core import MAX_NUMBER_OF_STARS, mask
 
-MAX_NUMBER_OF_STARS = 15
+__all__ = ["MAX_NUMBER_OF_STARS", "StreamWrapper", "mask"]
 
 
 class StreamWrapper(io.RawIOBase):
@@ -50,6 +51,8 @@ class StreamWrapper(io.RawIOBase):
         :param size: If size is specified, at most size bytes will be read.
         :return: The line with masked patterns. The line terminator is always b'\n' for binary files.
         """
+        if size is None:
+            size = -1
         while carry := self._stream.readline(size):
             if res := self._wrapper.masking_read(carry):
                 return res
