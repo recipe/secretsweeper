@@ -40,6 +40,7 @@ select = ["F", "E", "W", "UP", "I001", "I002"]
 
 [dependency-groups]
 dev = [
+    "gevent (>=25.4.1,<26.0.0)",
     "hatchling==1.28.0",
     "ziglang==0.16.0",
     "pre-commit (>=4.6.0,<5.0.0)",

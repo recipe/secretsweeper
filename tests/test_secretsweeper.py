@@ -1,5 +1,6 @@
 import io
 import pathlib
+import threading
 import typing
 import unittest
 
@@ -153,6 +154,50 @@ def test_stream_wrapper_readall() -> None:
         stream = secretsweeper.StreamWrapper(f, (b"line",))
         result = stream.readall()
     assert result == b"first ****" + NL + b"second ****" + NL + b"third ****" + NL
+
+
+def test_stream_wrapper_concurrent_use_is_safe() -> None:
+    # Sharing one wrapper across threads must be memory-safe: the native automaton
+    # state is mutated with the GIL released, so calls are serialized with a lock.
+    wrapper = secretsweeper._core._StreamWrapper((b"ab", b"line\nsecond"))
+    errors = []
+
+    def worker() -> None:
+        try:
+            for _ in range(200):
+                wrapper.masking_read(b"a" * 64 + b"b line\nsec")
+                wrapper.get_reminder()
+                wrapper.consume_reminder()
+        except Exception as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    threads = [threading.Thread(target=worker) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert not errors
+
+
+def test_stream_wrapper_gevent_safe() -> None:
+    # The wrapper lock is only held around native calls that contain no greenlet
+    # switch points, so sharing a wrapper between greenlets must neither deadlock
+    # nor corrupt the automaton state, even without gevent monkey-patching.
+    gevent = pytest.importorskip("gevent")
+
+    wrapper = secretsweeper._core._StreamWrapper((b"ab",))
+
+    def worker() -> int:
+        emitted = 0
+        for _ in range(100):
+            emitted += len(wrapper.masking_read(b"a" * 32 + b"b"))
+            gevent.sleep(0)
+        return emitted
+
+    greenlets = [gevent.spawn(worker) for _ in range(4)]
+    gevent.joinall(greenlets, timeout=30, raise_error=True)
+    emitted = sum(g.get() for g in greenlets)
+    assert emitted + len(wrapper.consume_reminder()) == 4 * 100 * 33
 
 
 def test_stream_wrapper_reminder_is_bounded() -> None:

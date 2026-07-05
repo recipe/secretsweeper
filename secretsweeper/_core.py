@@ -4,6 +4,7 @@ import ctypes
 import io
 import pathlib
 import sys
+import threading
 import typing
 
 MAX_NUMBER_OF_STARS = 15
@@ -91,7 +92,16 @@ def _mask(automaton: int, text: bytes, limit: int, *, is_streaming: bool) -> byt
 
 
 class _StreamWrapper:
-    """An internal _StreamWrapper class that owns a persistent automaton handle."""
+    """
+    An internal _StreamWrapper class that owns a persistent automaton handle.
+
+    The automaton state is mutated by the native code with the GIL released, so all
+    calls into it are serialized with a lock to keep concurrent use memory-safe.
+
+    This is also gevent-safe: `threading.Lock` is resolved when the wrapper is created,
+    honoring monkey-patching, and even an unpatched lock is only ever held around
+    native calls that contain no greenlet switch points.
+    """
 
     def __init__(self, patterns: typing.Iterable[bytes], /, *, limit: int = MAX_NUMBER_OF_STARS):
         """
@@ -101,6 +111,7 @@ class _StreamWrapper:
         :param limit: The max number of consecutive stars.
         """
         self._limit = limit
+        self._lock = threading.Lock()
         self._automaton = _build_automaton(patterns)
 
     def __del__(self, _destroy=_lib.ss_destroy):
@@ -119,21 +130,27 @@ class _StreamWrapper:
         :param carry: A chunk buffer that needs to be masked with the `*` asterisk character.
         :return: Returns the input string with masked patterns.
         """
-        return _mask(self._automaton, carry, self._limit, is_streaming=True)
+        with self._lock:
+            return _mask(self._automaton, carry, self._limit, is_streaming=True)
 
     def consume_reminder(self) -> bytes:
         """
         :return: Consumes the reminder or return empty bytes if there is no reminder. Then reset its value.
         """
-        try:
-            return self.get_reminder()
-        finally:
-            _lib.ss_reset_reminder(self._automaton)
+        with self._lock:
+            try:
+                return self._get_reminder()
+            finally:
+                _lib.ss_reset_reminder(self._automaton)
 
     def get_reminder(self) -> bytes:
         """
         :return: Get the reminder or return empty bytes if it's empty.
         """
+        with self._lock:
+            return self._get_reminder()
+
+    def _get_reminder(self) -> bytes:
         out_len = ctypes.c_size_t()
         ptr = _lib.ss_get_reminder(self._automaton, ctypes.byref(out_len))
         if not ptr:
