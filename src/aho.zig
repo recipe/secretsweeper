@@ -3,17 +3,101 @@ const testing = std.testing;
 
 const MAX_INT = std.math.maxInt(usize);
 
+/// A mid-size edge container: an unsorted array scanned linearly.
+const Few = struct {
+    keys: [16]u8,
+    ids: [16]u32,
+    count: u8,
+};
+
+/// Adaptive edge container, sized by the number of children (ART-style).
+/// Trie nodes are overwhelmingly chains (~96% have exactly one child), so the
+/// 0/1-child cases are stored inline with no heap allocation; the rare branchy
+/// nodes upgrade to a linear array and then to a dense direct-indexed table.
+const Edges = union(enum) {
+    none: void,
+    one: struct { key: u8, id: u32 },
+    few: *Few,
+    dense: *[256]u32,
+};
+
 const Node = struct {
-    /// Links to child trie nodes.
-    move: [256]usize = [_]usize{0} ** 256,
+    /// Outgoing edges, adaptively sized.
+    edges: Edges = .none,
     /// The identifier of the trie node that acts as the fail move.
-    fail: usize = 0,
+    fail: u32 = 0,
     /// Pattern length.
-    len: usize = 0,
+    len: u32 = 0,
     /// A search pattern identifier.
-    id: usize = 0,
+    id: u32 = 0,
     /// The trie depth of this node: the length of the pattern prefix it represents.
-    depth: usize = 0,
+    depth: u32 = 0,
+
+    /// Returns the child node identifier for byte `c`, or null when there is no edge.
+    fn child(self: *const Node, c: u8) ?usize {
+        switch (self.edges) {
+            .none => return null,
+            .one => |edge| return if (edge.key == c) edge.id else null,
+            .few => |few| {
+                // Branchless membership test: one 16-byte vector compare.
+                const keys: @Vector(16, u8) = few.keys;
+                const matches: u16 = @bitCast(keys == @as(@Vector(16, u8), @splat(c)));
+                const valid = matches & @as(u16, @truncate((@as(u32, 1) << @as(u5, @intCast(few.count))) - 1));
+                if (valid == 0) {
+                    return null;
+                }
+                return few.ids[@ctz(valid)];
+            },
+            .dense => |dense| {
+                const id = dense[c];
+                // The root is never a child, so 0 marks a missing edge.
+                return if (id != 0) id else null;
+            },
+        }
+    }
+
+    /// Adds an edge for byte `c` leading to the node `child_id`,
+    /// upgrading the container when it outgrows its size class.
+    fn addChild(self: *Node, allocator: std.mem.Allocator, c: u8, child_id: u32) !void {
+        switch (self.edges) {
+            .none => self.edges = .{ .one = .{ .key = c, .id = child_id } },
+            .one => |edge| {
+                const few = try allocator.create(Few);
+                few.keys = @splat(0); // the vector compare reads all 16 keys
+                few.count = 2;
+                few.keys[0] = edge.key;
+                few.ids[0] = edge.id;
+                few.keys[1] = c;
+                few.ids[1] = child_id;
+                self.edges = .{ .few = few };
+            },
+            .few => |few| {
+                if (few.count < few.keys.len) {
+                    few.keys[few.count] = c;
+                    few.ids[few.count] = child_id;
+                    few.count += 1;
+                    return;
+                }
+                const dense = try allocator.create([256]u32);
+                @memset(dense, 0);
+                for (few.keys, few.ids) |key, id| {
+                    dense[key] = id;
+                }
+                dense[c] = child_id;
+                allocator.destroy(few);
+                self.edges = .{ .dense = dense };
+            },
+            .dense => |dense| dense[c] = child_id,
+        }
+    }
+
+    fn deinitEdges(self: *Node, allocator: std.mem.Allocator) void {
+        switch (self.edges) {
+            .few => |few| allocator.destroy(few),
+            .dense => |dense| allocator.destroy(dense),
+            else => {},
+        }
+    }
 };
 
 /// Aho-Corasick automaton class.
@@ -24,6 +108,10 @@ pub const Aho = struct {
 
     /// A list of all existing nodes.
     nodes: std.ArrayList(Node),
+    /// A dense transition table for the root node, filled by `build`. Most of the
+    /// input walks through the root, so this keeps the hot path to a single load
+    /// while inner nodes stay sparse.
+    root_moves: [256]u32 = [_]u32{0} ** 256,
     /// Total number of patterns.
     pidx: usize,
     /// The total number of nodes.
@@ -90,7 +178,23 @@ pub const Aho = struct {
 
     pub fn deinit(self: *Aho) void {
         self.reset_reminder();
+        for (self.nodes.items) |*node| {
+            node.deinitEdges(self.allocator);
+        }
         self.nodes.deinit(self.allocator);
+    }
+
+    /// Returns the next state for byte `c`, following fail links while the state
+    /// has no edge for it. Fail-link walks amortize to O(1) per input byte.
+    fn goTo(self: *const Aho, state: usize, c: u8) usize {
+        var s = state;
+        while (s != 0) {
+            if (self.nodes.items[s].child(c)) |next| {
+                return next;
+            }
+            s = self.nodes.items[s].fail;
+        }
+        return self.root_moves[c];
     }
 
     /// Inserts a new pattern and returns its unique identifier.
@@ -102,47 +206,54 @@ pub const Aho = struct {
         }
         var u: usize = 0;
         for (pattern) |c| {
-            if (self.nodes.items[u].move[c] == 0) {
-                // Insert a new node to a trie.
-                self.total += 1;
-                const child_depth = self.nodes.items[u].depth + 1;
-                try self.nodes.append(self.allocator, Node{ .depth = child_depth });
-                self.nodes.items[u].move[c] = self.total;
+            if (self.nodes.items[u].child(c)) |v| {
+                // Transition to an existing node.
+                u = v;
+                continue;
             }
-            // Transition to a new node.
-            u = self.nodes.items[u].move[c];
+            // Insert a new node to a trie.
+            self.total += 1;
+            if (self.total > std.math.maxInt(u32)) {
+                return error.TooManyNodes;
+            }
+            const child_depth = self.nodes.items[u].depth + 1;
+            try self.nodes.append(self.allocator, Node{ .depth = child_depth });
+            try self.nodes.items[u].addChild(self.allocator, c, @intCast(self.total));
+            u = self.total;
         }
         if (self.nodes.items[u].id == 0) {
             self.pidx += 1;
-            self.nodes.items[u].id = self.pidx;
-            self.nodes.items[u].len = pattern.len;
+            // Both fit in u32: nodes are counted per pattern byte, and `insert`
+            // fails with TooManyNodes before the node count can exceed it.
+            self.nodes.items[u].id = @intCast(self.pidx);
+            self.nodes.items[u].len = @intCast(pattern.len);
         }
         return self.nodes.items[u].id;
     }
 
-    /// Build goto and fail functions.
+    /// Build fail links in breadth-first order.
     pub fn build(self: *Aho) !void {
         var queue = try std.ArrayList(usize).initCapacity(self.allocator, 0);
         defer queue.deinit(self.allocator);
 
         for (0..256) |i| {
-            if (self.nodes.items[0].move[i] != 0) {
-                try queue.append(self.allocator, self.nodes.items[0].move[i]);
-            }
+            self.root_moves[i] = @intCast(self.nodes.items[0].child(@intCast(i)) orelse 0);
         }
 
+        try queue.append(self.allocator, 0);
         var head: usize = 0;
         while (head < queue.items.len) {
             const u = queue.items[head];
             head += 1;
             for (0..256) |i| {
-                const transition_node_id = self.nodes.items[u].move[i];
-                const fail_node_id = self.nodes.items[u].fail;
-                if (transition_node_id != 0) {
-                    self.nodes.items[transition_node_id].fail = self.nodes.items[fail_node_id].move[i];
-                    try queue.append(self.allocator, transition_node_id);
-                } else {
-                    self.nodes.items[u].move[i] = self.nodes.items[fail_node_id].move[i];
+                const c: u8 = @intCast(i);
+                if (self.nodes.items[u].child(c)) |v| {
+                    if (u != 0) {
+                        // The fail link of a deeper node continues from its parent's
+                        // fail link; children of the root keep the root as the fail.
+                        self.nodes.items[v].fail = @intCast(self.goTo(self.nodes.items[u].fail, c));
+                    }
+                    try queue.append(self.allocator, v);
                 }
             }
         }
@@ -178,7 +289,7 @@ pub const Aho = struct {
         }
         for (args.text, 0..) |c, pos| {
             // Walk the automaton.
-            self.state = self.nodes.items[self.state].move[c];
+            self.state = self.goTo(self.state, c);
             // Copy from input character by character.
             buf[buf_len] = c;
             buf_len += 1;
