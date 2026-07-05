@@ -1,31 +1,36 @@
 [project]
 name = "secretsweeper"
 version = "0.0.1a3"
+description = "Fast, in-memory secret-sanitizing CPython module written in Zig, designed for speed."
+authors = [{ name = "Vitaliy Demidov", email = "notifications.recipient@gmail.com" }]
+readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 
 [build-system]
-requires = ["poetry-core==2.2.1", "ziggy-pydust==0.26.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling==1.28.0", "ziglang==0.16.0"]
+build-backend = "hatchling.build"
 
-[tool.poetry]
-name = "secretsweeper"
-description = "Fast, in-memory secret-sanitizing CPython module written in Zig, designed for speed."
-authors = ["Vitaliy Demidov <notifications.recipient@gmail.com>"]
-readme = "README.md"
-packages = [{ include = "secretsweeper" }]
+[tool.hatch.build.targets.wheel]
+packages = ["secretsweeper"]
+
+[tool.hatch.build.targets.wheel.hooks.custom]
+path = "hatch_build.py"
+
+[tool.hatch.build.targets.sdist]
 include = [
-    { path = "src/", format = "sdist" },
-    { path = "secretsweeper/*.so", format = "wheel" },
-    "secretsweeper/*.pyi",
+    "secretsweeper",
+    "src",
+    "build.zig",
+    "hatch_build.py",
+    "tests",
 ]
-
-[tool.poetry.build]
-script = "build.py"
-
-[tool.poetry.dependencies]
-python = "^3.11"
+exclude = [
+    "secretsweeper/*.so",
+    "secretsweeper/*.dylib",
+    "secretsweeper/*.dll",
+]
 
 [tool.ruff]
 line-length = 120
@@ -33,14 +38,9 @@ line-length = 120
 [tool.ruff.lint]
 select = ["F", "E", "W", "UP", "I001", "I002"]
 
-[[tool.pydust.ext_module]]
-name = "secretsweeper._core"
-root = "src/core.zig"
-
 [dependency-groups]
 dev = [
-    "poetry>=2.2.1",
-    "ziggy-pydust==0.26.0",
+    "ziglang==0.16.0",
     "pytest (>=8.4.2,<9.0.0)",
     "ruff (>=0.13.3,<0.14.0)"
 ]

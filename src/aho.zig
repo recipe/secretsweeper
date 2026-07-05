@@ -162,7 +162,7 @@ pub const Aho = struct {
             self.state = 0;
             self.last_occur = .{};
         }
-        const reminder_len = (self.reminder orelse "").len;
+        const reminder_len = if (self.reminder) |reminder| reminder.len else 0;
         const input_len = reminder_len + args.text.len;
         // Result buffer.
         var buf = try self.allocator.alloc(u8, input_len);
@@ -233,7 +233,7 @@ pub const Aho = struct {
 };
 
 test "Aho" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    var gpa = std.heap.DebugAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 

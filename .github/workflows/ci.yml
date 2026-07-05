@@ -92,11 +92,8 @@ jobs:
         with:
           version: "0.8.22"
 
-      - name: Install dependencies
-        run: uv sync --no-install-project
-
       - name: Build sdist package
-        run: uv run poetry build -f sdist && ls -al dist
+        run: uv build --sdist && ls -al dist
 
       - name: Upload sdist package
         uses: actions/upload-artifact@v4

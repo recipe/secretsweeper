@@ -1,9 +1,10 @@
 import io
 import typing
 
-from ._core import *  # noqa: F403
+from . import _core
+from ._core import MAX_NUMBER_OF_STARS, mask
 
-MAX_NUMBER_OF_STARS = 15
+__all__ = ["MAX_NUMBER_OF_STARS", "StreamWrapper", "mask"]
 
 
 class StreamWrapper(io.RawIOBase):
