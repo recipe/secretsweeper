@@ -56,6 +56,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      # The native aarch64-windows zig crashes on any compilation (ziglang/zig#16665),
+      # so run the x86_64 zig under Windows x64 emulation; the wheel's DLL is still
+      # cross-compiled for aarch64.
+      - name: Install x86_64 Zig for Windows ARM64
+        if: matrix.os == 'windows-11-arm'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri https://ziglang.org/download/0.16.0/zig-x86_64-windows-0.16.0.zip -OutFile $env:RUNNER_TEMP\zig.zip
+          Expand-Archive $env:RUNNER_TEMP\zig.zip -DestinationPath $env:RUNNER_TEMP\zig
+          "SECRETSWEEPER_ZIG=$env:RUNNER_TEMP\zig\zig-x86_64-windows-0.16.0\zig.exe" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.3.1
         env:
