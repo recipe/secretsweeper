@@ -81,7 +81,9 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@c6c39891d69e0d1e7448c727f68b7b4d5e660e7f # v3.3.1
         env:
-          CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=${{ runner.arch == 'X64' && '15.7' || '14.8' }}
+          # The hatch build hook passes this to zig as the target's minimum macOS
+          # version; without it the dylib would require the runner's own OS version.
+          CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=11.0
           CIBW_BUILD_FRONTEND: pip
           CIBW_BUILD_VERBOSITY: 0
           CIBW_TEST_COMMAND: "pip install pytest && pytest {project}/tests"

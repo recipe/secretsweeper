@@ -37,6 +37,20 @@ def windows_target() -> str | None:
     return f"{arch}-windows-gnu"
 
 
+def macos_target() -> str | None:
+    """On macOS, honor MACOSX_DEPLOYMENT_TARGET: the native target stamps the dylib with
+    the build host's OS version as its minimum, which would pin wheels to that macOS."""
+    if sys.platform != "darwin":
+        return None
+    min_version = os.environ.get("MACOSX_DEPLOYMENT_TARGET")
+    if not min_version:
+        return None
+    arch = {"arm64": "aarch64", "x86_64": "x86_64"}.get(platform.machine())
+    if arch is None:
+        raise RuntimeError(f"unsupported macOS architecture: {platform.machine()}")
+    return f"{arch}-macos.{min_version}"
+
+
 def run_zig(args: list[str], cwd: str) -> None:
     command = [*zig_command(), *args]
     result = subprocess.run(command, capture_output=True, text=True, cwd=cwd)
@@ -49,12 +63,18 @@ def run_zig(args: list[str], cwd: str) -> None:
 
 class ZigBuildHook(BuildHookInterface):
     def initialize(self, version: str, build_data: dict) -> None:
-        target = windows_target()
+        # windows_target() and macos_target() are mutually exclusive; `windows` is kept
+        # separate from `target` because the fallback below applies only to Windows.
+        windows = windows_target()
+        target = windows or macos_target()
         try:
             target_options = [f"-Dtarget={target}"] if target else []
             run_zig(["build", "-Doptimize=ReleaseFast", *target_options], cwd=self.root)
         except RuntimeError:
-            if target is None:
+            # On any host other than Windows a build failure is fatal: the `build-lib`
+            # fallback is a workaround for the Windows ARM64 crash below and would
+            # emit a .dll regardless of the host.
+            if windows is None:
                 raise
             # `zig build` crashes silently on Windows ARM64 (zig support for aarch64-windows
             # is partial: ziglang/zig#16665). Unlike `zig build`, compiling the library
@@ -70,7 +90,7 @@ class ZigBuildHook(BuildHookInterface):
                     "-OReleaseFast",
                     "-lc",
                     "-target",
-                    target,
+                    windows,
                     "-femit-bin=zig-out/bin/secretsweeper.dll",
                 ],
                 cwd=self.root,
