@@ -1,6 +1,6 @@
 [project]
 name = "secretsweeper"
-version = "0.0.1a4"
+version = "0.0.1a5"
 description = "Fast, in-memory secret-sanitizing CPython module written in Zig, designed for speed."
 authors = [{ name = "Vitaliy Demidov", email = "notifications.recipient@gmail.com" }]
 readme = "README.md"
