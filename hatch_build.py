@@ -51,6 +51,16 @@ def macos_target() -> str | None:
     return f"{arch}-macos.{min_version}"
 
 
+def linux_cpu() -> list[str]:
+    """On Linux, compile for the architecture's baseline CPU: the native target enables
+    every feature of the build machine's CPU (like -mcpu=native), so wheels built on
+    newer CI hardware (e.g. Neoverse N2 with SVE) crash with SIGILL on CPUs lacking
+    those instructions, such as Apple Silicon under Docker or Graviton 1/2."""
+    if not sys.platform.startswith("linux"):
+        return []
+    return ["-Dcpu=baseline"]
+
+
 def run_zig(args: list[str], cwd: str) -> None:
     command = [*zig_command(), *args]
     result = subprocess.run(command, capture_output=True, text=True, cwd=cwd)
@@ -69,7 +79,7 @@ class ZigBuildHook(BuildHookInterface):
         target = windows or macos_target()
         try:
             target_options = [f"-Dtarget={target}"] if target else []
-            run_zig(["build", "-Doptimize=ReleaseFast", *target_options], cwd=self.root)
+            run_zig(["build", "-Doptimize=ReleaseFast", *target_options, *linux_cpu()], cwd=self.root)
         except RuntimeError:
             # On any host other than Windows a build failure is fatal: the `build-lib`
             # fallback is a workaround for the Windows ARM64 crash below and would
