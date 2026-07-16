@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1-alpha.6] - 2026-07-16
+
 ### Fixed
 
 - `Illegal instruction` (SIGILL) crash on Linux CPUs older than the CI build
