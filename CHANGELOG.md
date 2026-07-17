@@ -79,7 +79,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enables use with in-memory buffers, file-like objects, and streaming
   pipelines.
 
-[unreleased]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.5...HEAD
+[unreleased]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.6...HEAD
+[0.0.1-alpha.5]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.5...0.0.1-alpha.6
 [0.0.1-alpha.5]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.4...0.0.1-alpha.5
 [0.0.1-alpha.4]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.3...0.0.1-alpha.4
 [0.0.1-alpha.3]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.1...0.0.1-alpha.3
