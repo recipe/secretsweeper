@@ -1,0 +1,3 @@
+"""Type stubs for the `secretsweeper._native` CPython extension (src/python.zig)."""
+
+def masking_read(handle: int, data: bytes, limit: int) -> bytes: ...

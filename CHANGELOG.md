@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1-alpha.7] - 2026-07-17
+
+### Added
+
+- CPython extension module `secretsweeper._native` (stable ABI, `METH_FASTCALL`)
+  for the hot streaming call: `_StreamWrapper.masking_read` now runs at ~226 ns
+  per call instead of ~1800 ns through ctypes marshaling. The extension ships in
+  the Linux and macOS wheels for regular CPython builds; on Windows and on
+  free-threaded CPython (which has no stable ABI) the ctypes path is used
+  automatically.
+
+### Changed
+
+- `_StreamWrapper` rejects a negative `limit` at construction time instead of
+  on the first read.
+
 ## [0.0.1-alpha.6] - 2026-07-16
 
 ### Fixed
@@ -79,7 +95,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enables use with in-memory buffers, file-like objects, and streaming
   pipelines.
 
-[unreleased]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.6...HEAD
+[unreleased]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.7...HEAD
+[0.0.1-alpha.7]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.6...0.0.1-alpha.7
 [0.0.1-alpha.6]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.5...0.0.1-alpha.6
 [0.0.1-alpha.5]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.4...0.0.1-alpha.5
 [0.0.1-alpha.4]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.3...0.0.1-alpha.4

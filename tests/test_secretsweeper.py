@@ -1,5 +1,7 @@
 import io
 import pathlib
+import sys
+import sysconfig
 import threading
 import typing
 import unittest
@@ -209,6 +211,34 @@ def test_stream_wrapper_reminder_is_bounded() -> None:
     assert first == b"a" * 99
     assert stream._wrapper.get_reminder() == b"a"
     assert first + stream.readall() == b"a" * 1000
+
+
+def test_native_extension_is_used() -> None:
+    if sys.platform in ("win32", "cygwin"):
+        pytest.skip("the extension is not built on Windows")
+    if sysconfig.get_config_var("Py_GIL_DISABLED"):
+        pytest.skip("the extension is not supported on free-threaded CPython")
+    assert secretsweeper._core._native is not None
+
+
+def test_masking_read_ctypes_fallback_matches_native(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    chunks = (b"a multi", b"x", b"say uuid-123 loud\n", b"", b"multi\nline tail")
+    outputs = []
+    for native in (secretsweeper._core._native, None):
+        monkeypatch.setattr(secretsweeper._core, "_native", native)
+        wrapper = secretsweeper._core._StreamWrapper((b"multi\nline", b"uuid-123"))
+        outputs.append([wrapper.masking_read(c) for c in chunks] + [wrapper.consume_reminder()])
+    assert outputs[0] == outputs[1]
+
+
+def test_masking_read_output_larger_than_input() -> None:
+    # A flushed reminder is prepended to the output, so a call's output can exceed
+    # its input; the output buffer headroom must absorb it.
+    wrapper = secretsweeper._core._StreamWrapper((b"multi\nline",))
+    assert wrapper.masking_read(b"a multi") == b"a "
+    assert wrapper.masking_read(b"x") == b"multix"
 
 
 def test_stream_wrapper_bytes_io() -> None:

@@ -4,8 +4,19 @@ import ctypes
 import io
 import pathlib
 import sys
+import sysconfig
 import threading
 import typing
+
+if sysconfig.get_config_var("Py_GIL_DISABLED"):
+    # Free-threaded CPython does not support the stable ABI: its object header layout
+    # differs from the one the extension declares, and importing it segfaults.
+    _native = None
+else:
+    try:
+        from secretsweeper import _native
+    except ImportError:  # platforms where the extension is not built (e.g. Windows)
+        _native = None  # ty: ignore[invalid-assignment]
 
 MAX_NUMBER_OF_STARS = 15
 
@@ -110,6 +121,8 @@ class _StreamWrapper:
         :param patterns: Any iterable of patterns that have to be masked with the `*` asterisk character.
         :param limit: The max number of consecutive stars.
         """
+        if limit < 0:
+            raise ValueError("limit must be non-negative")
         self._limit = limit
         self._lock = threading.Lock()
         self._automaton = _build_automaton(patterns)
@@ -131,6 +144,8 @@ class _StreamWrapper:
         :return: Returns the input string with masked patterns.
         """
         with self._lock:
+            if _native is not None:
+                return _native.masking_read(self._automaton, carry, self._limit)
             return _mask(self._automaton, carry, self._limit, is_streaming=True)
 
     def consume_reminder(self) -> bytes:
