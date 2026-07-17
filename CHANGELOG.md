@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1-alpha.6] - 2026-07-16
+
+### Fixed
+
+- `Illegal instruction` (SIGILL) crash on Linux CPUs older than the CI build
+  machines: the `hatch` build hook now passes `-Dcpu=baseline` to `zig` on Linux,
+  so wheels use the architecture's baseline instruction set instead of the
+  build host's full feature set (`aarch64` wheels built on `Neoverse N2` runners
+  contained SVE instructions, crashing on Apple Silicon under Docker and
+  Graviton 1/2).
+
 ## [0.0.1-alpha.5] - 2026-07-06
 
 ### Added
