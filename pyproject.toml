@@ -14,6 +14,12 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 
+[project.urls]
+Homepage = "https://github.com/recipe/secretsweeper"
+Source = "https://github.com/recipe/secretsweeper"
+Changelog = "https://github.com/recipe/secretsweeper/blob/main/CHANGELOG.md"
+Issues = "https://github.com/recipe/secretsweeper/issues"
+
 [build-system]
 requires = ["hatchling==1.28.0", "ziglang==0.16.0"]
 build-backend = "hatchling.build"
