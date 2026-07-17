@@ -5,13 +5,22 @@ import platform
 import shutil
 import subprocess
 import sys
+import sysconfig
 from pathlib import Path
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
 LIBRARY_NAMES = ("libsecretsweeper.so", "libsecretsweeper.dylib", "secretsweeper.dll")
-# CPython extension for the hot calls; not built on Windows (ctypes fallback applies).
+# CPython extension for the hot calls; the ctypes fallback applies where it is absent.
+# Not shipped on Windows (extensions must link python3.lib there) or in free-threaded
+# wheels (no stable ABI: the object header layout differs and importing it segfaults).
 EXTENSION_NAMES = ("_native.abi3.so",)
+
+
+def extension_names() -> tuple[str, ...]:
+    if sysconfig.get_config_var("Py_GIL_DISABLED"):
+        return ()
+    return EXTENSION_NAMES
 
 
 def zig_command() -> list[str]:
@@ -109,7 +118,7 @@ class ZigBuildHook(BuildHookInterface):
             )
         found_library = False
         for out_dir in ("lib", "bin"):
-            for name in LIBRARY_NAMES + EXTENSION_NAMES:
+            for name in LIBRARY_NAMES + extension_names():
                 artifact = Path(self.root) / "zig-out" / out_dir / name
                 if artifact.exists():
                     build_data["force_include"][str(artifact)] = f"secretsweeper/{name}"

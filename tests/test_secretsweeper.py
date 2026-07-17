@@ -1,6 +1,7 @@
 import io
 import pathlib
 import sys
+import sysconfig
 import threading
 import typing
 import unittest
@@ -215,6 +216,8 @@ def test_stream_wrapper_reminder_is_bounded() -> None:
 def test_native_extension_is_used() -> None:
     if sys.platform in ("win32", "cygwin"):
         pytest.skip("the extension is not built on Windows")
+    if sysconfig.get_config_var("Py_GIL_DISABLED"):
+        pytest.skip("the extension is not supported on free-threaded CPython")
     assert secretsweeper._core._native is not None
 
 

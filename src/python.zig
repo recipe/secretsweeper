@@ -13,7 +13,9 @@
 //! the limited API since 3.10; the package requires >=3.11). The needed C API
 //! functions and struct layouts are declared manually, so no Python headers
 //! are required at build time; the symbols resolve against the hosting
-//! interpreter when the module is imported.
+//! interpreter when the module is imported. Free-threaded CPython has no
+//! stable ABI and a different object header layout, so the module is neither
+//! shipped in free-threaded wheels nor imported by `_core` there.
 //!
 //! The automaton handle is the pointer returned by `ss_new` in the ctypes
 //! shared library. Both artifacts are compiled from the same sources in one

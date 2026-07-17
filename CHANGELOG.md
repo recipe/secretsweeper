@@ -11,9 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - CPython extension module `secretsweeper._native` (stable ABI, `METH_FASTCALL`)
   for the hot streaming call: `_StreamWrapper.masking_read` now runs at ~226 ns
-  per call instead of ~1800 ns through ctypes marshaling. The extension is built
-  on Linux and macOS; on Windows (and any platform where it is absent) the
-  ctypes path is used automatically.
+  per call instead of ~1800 ns through ctypes marshaling. The extension ships in
+  the Linux and macOS wheels for regular CPython builds; on Windows and on
+  free-threaded CPython (which has no stable ABI) the ctypes path is used
+  automatically.
 
 ### Changed
 

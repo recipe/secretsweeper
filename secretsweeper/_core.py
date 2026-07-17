@@ -4,13 +4,19 @@ import ctypes
 import io
 import pathlib
 import sys
+import sysconfig
 import threading
 import typing
 
-try:
-    from secretsweeper import _native
-except ImportError:  # platforms where the extension is not built (e.g. Windows)
-    _native = None  # ty: ignore[invalid-assignment]
+if sysconfig.get_config_var("Py_GIL_DISABLED"):
+    # Free-threaded CPython does not support the stable ABI: its object header layout
+    # differs from the one the extension declares, and importing it segfaults.
+    _native = None
+else:
+    try:
+        from secretsweeper import _native
+    except ImportError:  # platforms where the extension is not built (e.g. Windows)
+        _native = None  # ty: ignore[invalid-assignment]
 
 MAX_NUMBER_OF_STARS = 15
 
