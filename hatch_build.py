@@ -10,12 +10,14 @@ from pathlib import Path
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
 LIBRARY_NAMES = ("libsecretsweeper.so", "libsecretsweeper.dylib", "secretsweeper.dll")
+# CPython extension for the hot calls; not built on Windows (ctypes fallback applies).
+EXTENSION_NAMES = ("_native.abi3.so",)
 
 
 def zig_command() -> list[str]:
-    """Use the zig binary from SECRETSWEEPER_ZIG if set, otherwise prefer the `ziglang`
+    """Use the zig binary from SECRET_SWEEPER_ZIG if set, otherwise prefer the `ziglang`
     wheel from build requirements, and fall back to a system zig."""
-    if zig := os.environ.get("SECRETSWEEPER_ZIG"):
+    if zig := os.environ.get("SECRET_SWEEPER_ZIG"):
         return [zig]
     try:
         import ziglang  # noqa: F401
@@ -105,12 +107,14 @@ class ZigBuildHook(BuildHookInterface):
                 ],
                 cwd=self.root,
             )
+        found_library = False
         for out_dir in ("lib", "bin"):
-            for name in LIBRARY_NAMES:
+            for name in LIBRARY_NAMES + EXTENSION_NAMES:
                 artifact = Path(self.root) / "zig-out" / out_dir / name
                 if artifact.exists():
                     build_data["force_include"][str(artifact)] = f"secretsweeper/{name}"
                     build_data["pure_python"] = False
                     build_data["infer_tag"] = True
-                    return
-        raise RuntimeError("zig build did not produce a shared library in zig-out")
+                    found_library = found_library or name in LIBRARY_NAMES
+        if not found_library:
+            raise RuntimeError("zig build did not produce a shared library in zig-out")

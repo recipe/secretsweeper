@@ -44,9 +44,28 @@ jobs:
       - name: Type check
         run: uv sync --no-install-project && uv run --no-sync ty check
 
+  zig-test:
+    name: Zig tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: "0.8.22"
+
+      # Runs the tests in src/ (aho.zig and the C ABI exports in export.zig).
+      # The pinned ziglang version must match build-system.requires in pyproject.toml.
+      - name: Run zig build test
+        run: uv run --no-project --with ziglang==0.16.0 python -m ziglang build test
+
   build:
     name: Build wheels on ${{ matrix.os }}
-    needs: [lint]
+    needs: [lint, zig-test]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -76,7 +95,7 @@ jobs:
           $actual = (Get-FileHash "$env:RUNNER_TEMP\zig.zip" -Algorithm SHA256).Hash.ToLower()
           if ($actual -ne $expected) { throw "zig.zip SHA-256 mismatch: expected $expected, got $actual" }
           Expand-Archive $env:RUNNER_TEMP\zig.zip -DestinationPath $env:RUNNER_TEMP\zig
-          "SECRETSWEEPER_ZIG=$env:RUNNER_TEMP\zig\zig-x86_64-windows-0.16.0\zig.exe" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "SECRET_SWEEPER_ZIG=$env:RUNNER_TEMP\zig\zig-x86_64-windows-0.16.0\zig.exe" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Build wheels
         uses: pypa/cibuildwheel@c6c39891d69e0d1e7448c727f68b7b4d5e660e7f # v3.3.1

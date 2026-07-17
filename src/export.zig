@@ -110,3 +110,22 @@ test "C ABI roundtrip" {
     defer ss_free(out_ptr, out_len);
     try std.testing.expectEqualStrings("as***", out_ptr.?[0..out_len]);
 }
+
+test "C ABI streaming roundtrip" {
+    const ac = ss_new().?;
+    defer ss_destroy(ac);
+
+    try std.testing.expectEqual(0, ss_insert(ac, "her", 3));
+    try std.testing.expectEqual(0, ss_build(ac));
+
+    var out_ptr: ?[*]u8 = null;
+    var out_len: usize = 0;
+    // "ashe" ends with a partial match: "he" is held back as the reminder.
+    try std.testing.expectEqual(0, ss_mask(ac, "ashe", 4, 15, true, &out_ptr, &out_len));
+    try std.testing.expectEqualStrings("as", out_ptr.?[0..out_len]);
+    ss_free(out_ptr, out_len);
+    // "rs" completes "her": the reminder is flushed, output longer than input.
+    try std.testing.expectEqual(0, ss_mask(ac, "rs", 2, 15, true, &out_ptr, &out_len));
+    try std.testing.expectEqualStrings("***s", out_ptr.?[0..out_len]);
+    ss_free(out_ptr, out_len);
+}
