@@ -31,8 +31,25 @@ export fn ss_insert(ac: *Aho, pattern: [*]const u8, len: usize) i32 {
     return 0;
 }
 
-/// Build goto and fail functions. Call once, after all patterns are inserted.
+/// Builds whichever representation `mask` will use — never both. Tries the DFA
+/// first; falls back to the classic goto/fail-link build only if the pattern
+/// set exceeds `Aho.DFA_MEMORY_CAP`. Call once, after all patterns are
+/// inserted, even for automatons reused across many `ss_mask` calls (e.g.
+/// `StreamWrapper`).
 export fn ss_build(ac: *Aho) i32 {
+    const dfa_ok = ac.buildDfa() catch return -1;
+    if (!dfa_ok) {
+        ac.build() catch return -1;
+    }
+    return 0;
+}
+
+/// Test-only: builds the classic goto/fail-link representation unconditionally,
+/// skipping the DFA attempt `ss_build` always makes first. Pattern sets small
+/// enough for the DFA otherwise never exercise this path in normal use, so tests
+/// that want to cover both need a way to force it — see
+/// `secretsweeper._core._build_automaton`.
+export fn ss_build_fallback(ac: *Aho) i32 {
     ac.build() catch return -1;
     return 0;
 }
@@ -51,6 +68,8 @@ export fn ss_mask(
     out_ptr: *?[*]u8,
     out_len: *usize,
 ) i32 {
+    // `mask` dispatches through the DFA automatically whenever `ss_build` built
+    // one (streaming included), batching the whole search before any output.
     const masked = ac.mask(.{
         .text = text[0..len],
         .max_stars = max_stars,
@@ -103,6 +122,21 @@ test "C ABI roundtrip" {
 
     try std.testing.expectEqual(0, ss_insert(ac, "her", 3));
     try std.testing.expectEqual(0, ss_build(ac));
+
+    var out_ptr: ?[*]u8 = null;
+    var out_len: usize = 0;
+    try std.testing.expectEqual(0, ss_mask(ac, "asher", 5, 15, false, &out_ptr, &out_len));
+    defer ss_free(out_ptr, out_len);
+    try std.testing.expectEqualStrings("as***", out_ptr.?[0..out_len]);
+}
+
+test "C ABI roundtrip via forced fallback build" {
+    const ac = ss_new().?;
+    defer ss_destroy(ac);
+
+    try std.testing.expectEqual(0, ss_insert(ac, "her", 3));
+    try std.testing.expectEqual(0, ss_build_fallback(ac));
+    try std.testing.expectEqual(0, ac.dfa_table.len); // confirms the DFA was skipped
 
     var out_ptr: ?[*]u8 = null;
     var out_len: usize = 0;

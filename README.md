@@ -64,6 +64,13 @@ with urllib.request.urlopen(url) as src, open("sanitized.txt", "wb") as dest:
 
 More examples are in [tests](tests/test_secretsweeper.py).
 
+## Performance
+
+SecretSweeper's Zig core is within a few percent of the fastest Rust-backed Aho-Corasick
+implementation available for Python, and multiple times faster than stdlib `re` or other
+pure-Python/C-extension alternatives. See [benchmarks/RESULTS.md](benchmarks/RESULTS.md)
+for the full, reproducible comparison (methodology, corpus, and machine specs included).
+
 ## Getting involved
 
 🌱 Contributions are always welcome — whether it’s a bug report, a small fix, or a big idea.

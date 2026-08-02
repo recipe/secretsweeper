@@ -103,18 +103,23 @@ def test_mask_utf8(input: str, patterns: typing.Iterable[str], expected: str) ->
 
 
 @pytest.mark.parametrize(
-    ("patterns"),
+    ("patterns_factory"),
     [
-        (b"a",),  # it can be a tuple
-        [b"a"],  # it can be a list
-        {b"a"},  # it can be a set
-        {b"a": typing.Any},  # it can be a dict
-        (b"a" for i in range(0, 1)),  # it can be a generator expression
-        _generator(),
+        pytest.param(lambda: (b"a",), id="tuple"),
+        pytest.param(lambda: [b"a"], id="list"),
+        pytest.param(lambda: {b"a"}, id="set"),
+        pytest.param(lambda: {b"a": typing.Any}, id="dict"),
+        # Every case is a zero-arg factory, not just these two, so the parameter
+        # stays a single Callable type instead of a Callable | Iterable union -
+        # generators are one-shot, so each test now running twice (dfa/fallback
+        # build variant - see conftest.py) would otherwise exhaust a single shared
+        # generator instance on the second run.
+        pytest.param(lambda: (b"a" for i in range(0, 1)), id="generator expression"),
+        pytest.param(_generator, id="generator function"),
     ],
 )
-def test_mask_pattern_type(patterns: typing.Iterable[bytes]) -> None:
-    assert secretsweeper.mask(b"a", patterns) == b"*"
+def test_mask_pattern_type(patterns_factory: typing.Callable[[], typing.Iterable[bytes]]) -> None:
+    assert secretsweeper.mask(b"a", patterns_factory()) == b"*"
 
 
 def test_mask_max_number_of_stars_default() -> None:

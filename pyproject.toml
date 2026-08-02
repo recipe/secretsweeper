@@ -60,3 +60,9 @@ dev = [
     "ruff (>=0.13.3,<0.14.0)",
     "ty (==0.0.56)"
 ]
+benchmark = [
+    "acora (>=2.5,<3.0)",
+    "ahocorapy (>=1.0.2,<2.0.0)",
+    "ahocorasick-rs (>=0.22.0,<0.23.0)",
+    "pyahocorasick (>=2.1.0,<3.0.0)",
+]

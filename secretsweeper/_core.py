@@ -2,6 +2,7 @@
 
 import ctypes
 import io
+import os
 import pathlib
 import sys
 import sysconfig
@@ -47,6 +48,8 @@ _lib.ss_insert.argtypes = (ctypes.c_void_p, ctypes.c_char_p, ctypes.c_size_t)
 _lib.ss_insert.restype = ctypes.c_int32
 _lib.ss_build.argtypes = (ctypes.c_void_p,)
 _lib.ss_build.restype = ctypes.c_int32
+_lib.ss_build_fallback.argtypes = (ctypes.c_void_p,)
+_lib.ss_build_fallback.restype = ctypes.c_int32
 _lib.ss_mask.argtypes = (
     ctypes.c_void_p,
     ctypes.c_char_p,
@@ -65,6 +68,29 @@ _lib.ss_reset_reminder.argtypes = (ctypes.c_void_p,)
 _lib.ss_reset_reminder.restype = None
 
 
+_FORCE_NO_DFA_AUTOMATON_ENV = "SECRET_SWEEPER_NO_DFA_AUTOMATON"
+"""
+Normally builds whichever representation `ss_build` picks (the DFA, unless
+the pattern set exceeds its memory cap). Setting the
+`SECRET_SWEEPER_NO_DFA_AUTOMATON` environment variable to a truthy value
+(`1`/`true`, case-insensitive) forces the classic goto/fail-link build
+instead, for tests that need to exercise both code paths without a pattern
+set large enough to defeat the DFA naturally. Any other value (including
+unset, `0`, `false`) keeps the default behavior. Checked on every call (not
+cached at import time) so tests can toggle it per-test via
+`monkeypatch.setenv`.
+"""
+
+_TRUTHY_ENV_VALUES = frozenset({"1", "true"})
+
+
+def _is_env_flag_set(name: str) -> bool:
+    """True if the environment variable `name` is set to a truthy value
+    (`1`/`true`, case-insensitive, surrounding whitespace ignored). Everything
+    else - unset, `0`, `false`/`False`, empty, or any other value - is not."""
+    return os.environ.get(name, "").strip().lower() in _TRUTHY_ENV_VALUES
+
+
 def _build_automaton(patterns: typing.Iterable[bytes]) -> int:
     """Create an automaton, insert all patterns and build it. Returns the handle."""
     automaton = _lib.ss_new()
@@ -76,7 +102,8 @@ def _build_automaton(patterns: typing.Iterable[bytes]) -> int:
                 raise TypeError(f"expected bytes, found {type(pattern)}")
             if _lib.ss_insert(automaton, pattern, len(pattern)) != 0:
                 raise MemoryError("failed to insert a pattern")
-        if _lib.ss_build(automaton) != 0:
+        build_fn = _lib.ss_build_fallback if _is_env_flag_set(_FORCE_NO_DFA_AUTOMATON_ENV) else _lib.ss_build
+        if build_fn(automaton) != 0:
             raise MemoryError("failed to build the automaton")
     except BaseException:
         _lib.ss_destroy(automaton)
