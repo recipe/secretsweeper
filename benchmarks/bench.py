@@ -111,7 +111,7 @@ def register_engines() -> dict[str, dict]:
     register("re (stdlib regex)", re_mask, version=f"python {sys.version.split()[0]}")
 
     try:
-        import ahocorasick  # ty: ignore[unresolved-import]
+        import ahocorasick
 
         def pyahc_mask(pats: list[bytes], text: bytes) -> bytes:
             a = ahocorasick.Automaton()

@@ -122,8 +122,17 @@ def _try_version(dist_name: str) -> str | None:
 
 def _mermaid_label(name: str) -> str:
     """Quotes a category label for mermaid xychart-beta's x-axis list, escaping
-    the one character (`"`) that would otherwise break out of the quotes."""
-    return '"' + name.replace('"', "'") + '"'
+    the one character (`"`) that would otherwise break out of the quotes.
+
+    Also drops any parenthetical qualifier (e.g. "re (stdlib regex)" ->
+    "re") - GitHub's xychart-beta renderer doesn't wrap or rotate x-axis
+    labels, so the two longest full names here visibly collided with their
+    neighbors in practice. The full name (and version) is still right there
+    in the table immediately below the chart, so nothing is lost by keeping
+    the chart's own labels short.
+    """
+    short = name.split(" (", 1)[0]
+    return '"' + short.replace('"', "'") + '"'
 
 
 def render_bar_chart(available: list[tuple[str, dict]]) -> list[str]:
@@ -161,7 +170,7 @@ def render_markdown(data: dict, sysinfo: dict) -> str:
     lines: list[str] = []
     a = lines.append
 
-    a("# secretsweeper masking benchmark")
+    a("# SecretSweeper Masking Benchmark")
     a("")
     a(
         "Compares `secretsweeper.mask()` against stdlib `re` and several Aho-Corasick "
