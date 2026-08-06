@@ -38,7 +38,7 @@ xychart-beta
 
 | Engine | min | avg | min throughput | vs. fastest | correct |
 |---|---:|---:|---:|---:|:---:|
-| secretsweeper `0.0.1a7` | 108.7 ms | 127.2 ms | 964.9 MB/s | 1.00x | ✅ |
+| secretsweeper `0.0.1a8` | 108.7 ms | 127.2 ms | 964.9 MB/s | 1.00x | ✅ |
 | ahocorasick_rs `0.22.2` | 175.4 ms | 179.0 ms | 598.0 MB/s | 1.61x | ✅ |
 | acora `2.5` | 593.5 ms | 604.7 ms | 176.7 MB/s | 5.46x | ✅ |
 | pyahocorasick `2.3.1` | 835.0 ms | 873.9 ms | 125.6 MB/s | 7.68x | ✅ |
