@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1-alpha.8] - 2026-08-05
+
+### Added
+
+- Byte-class-compressed DFA dispatch for `mask()` 
+  pattern sets that fit within a fixed 20 MiB memory budget (`Aho.DFA_MEMORY_CAP`)
+  now dispatch through a flat transition table instead of walking the trie, with
+  a bigram prefilter in front that skips non-matching bytes without ever
+  touching the table. 
+- A reproducible  [benchmark suit and results](https://github.com/recipe/secretsweeper/blob/ed386ee3edd883eea2a3d0b787d088619e67f10b/benchmarks/RESULTS.md#secretsweeper-masking-benchmark) under `benchmarks/`  comparing `secretsweeper.mask()` against stdlib
+  `re`, `pyahocorasick`, `ahocorasick_rs`, `acora`, and `ahocorapy`. Results are
+  published in `benchmarks/RESULTS.md` and linked from a new "Performance"
+  section in the README. Comparison libraries are an optional `benchmark`
+  dependency group, kept out of the normal install.
+
 ## [0.0.1-alpha.7] - 2026-07-17
 
 ### Added
@@ -95,7 +110,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enables use with in-memory buffers, file-like objects, and streaming
   pipelines.
 
-[unreleased]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.7...HEAD
+[unreleased]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.8...HEAD
+[0.0.1-alpha.8]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.7...0.0.1-alpha.8
 [0.0.1-alpha.7]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.6...0.0.1-alpha.7
 [0.0.1-alpha.6]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.5...0.0.1-alpha.6
 [0.0.1-alpha.5]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.4...0.0.1-alpha.5
