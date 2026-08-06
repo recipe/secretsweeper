@@ -3,6 +3,69 @@ revision = 3
 requires-python = ">=3.11"
 
 [[package]]
+name = "acora"
+version = "2.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a5/68/53a973ea719eda80ea89c5ec71072ced42da855e9a763d270680c1ca36ac/acora-2.5.tar.gz", hash = "sha256:68f7caa68d7ddf617a81e8fcecd3f9c836646b04f4e257af24c3267feafc05bd", size = 268926, upload-time = "2024-09-14T10:24:24.668Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d0/fc/23c67b56f8216b7ea6e2c11bef4f6d2be200c566f86beaab3ffd5a3b18d2/acora-2.5-cp311-cp311-macosx_12_0_universal2.whl", hash = "sha256:15861c789c13b9a8a5cfc4614cd2537883e705359ff7c951dee145bcc4c8177c", size = 298141, upload-time = "2024-09-14T10:36:44.804Z" },
+    { url = "https://files.pythonhosted.org/packages/28/59/3adf65720f2cf64fe4fb86f87fde52ca0aa2b82c4c2c64debe2e4fdd530d/acora-2.5-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.manylinux_2_24_aarch64.whl", hash = "sha256:cd381769c5c13eedc16cd542eccb0237b6d69f99da833d6bfe08893d4361314a", size = 156791, upload-time = "2024-09-14T10:23:07.291Z" },
+    { url = "https://files.pythonhosted.org/packages/ea/cb/f9dbbe53345695d2f92a78560d9824661644ce019d663df9829b34f4b94e/acora-2.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_24_x86_64.whl", hash = "sha256:83e11f9cc4185dd36e0ef7f8f9041f55983cfece766a136c633d27a87b5fded3", size = 178185, upload-time = "2024-09-14T10:23:09.334Z" },
+    { url = "https://files.pythonhosted.org/packages/cf/b1/03f10e894e7917e60e0f8aa1c25ad146ed7a5157e7e43f0f84c73fa45f23/acora-2.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:245259e846a40c541d8e4d1aa53a344f26694991febd4c067f519487363d2d2e", size = 190320, upload-time = "2024-09-14T10:23:11.41Z" },
+    { url = "https://files.pythonhosted.org/packages/fd/fc/72d6584b69af3c18135a843404a1d63401bdc0ff349bb9b1df61f4af39de/acora-2.5-cp311-cp311-manylinux_2_5_i686.manylinux1_i686.manylinux_2_24_i686.whl", hash = "sha256:7f7ab0431503f60638b99cc1de23e3b37e994d7b88ed17b4b20c1dd5a7b858b4", size = 179230, upload-time = "2024-09-14T10:23:12.947Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/f4/7ecdd352463861e2f513e2c91eb9db99cf2d2401c864b777031052159b93/acora-2.5-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:a7965d5d5ff82177bb53e8936ad12a57640cfa19632127f1364c020c0bae895f", size = 193524, upload-time = "2024-09-14T10:23:14.472Z" },
+    { url = "https://files.pythonhosted.org/packages/29/a0/e689e339a0a0633fef5fde6955c2be1cd6baee651c4e5da6ef54d0640839/acora-2.5-cp311-cp311-win_amd64.whl", hash = "sha256:474436a82276a4830a1aa3ac4ae81d0239696604508f57b9d3e510682ca09fc7", size = 135121, upload-time = "2024-09-14T10:23:16.33Z" },
+    { url = "https://files.pythonhosted.org/packages/a9/d5/2c8761f4bb9a989f048a807f7ae535f97a3720714f31cb82d41d7c47b2f4/acora-2.5-cp312-cp312-macosx_12_0_universal2.whl", hash = "sha256:5cf442d9be8db005c51709c826843870dd4d67aad47065ede4267ad9de60e548", size = 300254, upload-time = "2024-09-14T10:36:47.212Z" },
+    { url = "https://files.pythonhosted.org/packages/5b/8d/b26bf1509b8757eb09ff779cef35c962715c78477193b3926db7fe4f804f/acora-2.5-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:fe567184f095704afab4d37654aab758d9ee32dd855876b310e4347f334e0f92", size = 169659, upload-time = "2024-09-14T10:23:17.765Z" },
+    { url = "https://files.pythonhosted.org/packages/60/e8/d5e6a72b2df32321a950b8268f26127375c6f90667c119169b73013373f6/acora-2.5-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:f679224d07f1a90f49be70dc43e08c2c5d9c6ec4a265046b869c1fd6866f8354", size = 182743, upload-time = "2024-09-14T10:23:19.282Z" },
+    { url = "https://files.pythonhosted.org/packages/ab/4e/027edabdfd2dbbfe94856597d606dd34dc7d196b2d31c4095263ce6421da/acora-2.5-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:df64853c65a891a6ff06745b608fcfc5e5a20878393434d3cc7a99cda1f8c96f", size = 186818, upload-time = "2024-09-14T10:23:20.768Z" },
+    { url = "https://files.pythonhosted.org/packages/31/96/4f85cbd6d80c2abbd04413fa36fc665a00fe0355d7faedc081b9237de3f5/acora-2.5-cp312-cp312-win_amd64.whl", hash = "sha256:bf5e04807197ef0fcaabb24775844ca41ec8d9f1e475e5ca24888b8a04c066a0", size = 135504, upload-time = "2024-09-14T10:23:22.037Z" },
+    { url = "https://files.pythonhosted.org/packages/54/36/40617f7b28cbc62051b66a39b5a86e30bc7488c407c50b1732d7138bdd15/acora-2.5-cp313-cp313-macosx_12_0_universal2.whl", hash = "sha256:6eaae580dcaaabf77a3aeef2d81421b3afe2fa930ec5b4604fb3e9a2a25277c0", size = 299214, upload-time = "2024-09-14T10:36:48.869Z" },
+    { url = "https://files.pythonhosted.org/packages/59/e8/988bb15746ab09cca396ac1a1eb27423e1d20272367c337263edce4e4228/acora-2.5-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:57bfb6ec07c34af23e72c18db39c685d414f7f0f04e6c236cef11d267e63ec2c", size = 168734, upload-time = "2024-09-14T10:23:23.494Z" },
+    { url = "https://files.pythonhosted.org/packages/e6/62/7ad9bc9c399f4347b1fd1d15e8df854383859d7926ad5804f068329331e6/acora-2.5-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:29dbee4dddc88b20ae5abb1f6a3b2f1ec0317c4b52756992c2738feaa0067e9f", size = 181548, upload-time = "2024-09-14T10:23:25.137Z" },
+    { url = "https://files.pythonhosted.org/packages/a7/bd/c4c4ea9ca40391ec91d572aca788aa62c5107855f7a46a64b182bd0f1efd/acora-2.5-cp313-cp313-musllinux_1_1_x86_64.whl", hash = "sha256:c53957e355b31c76613ff890fd422bbc658b695235e571826d0c82ce975c334e", size = 184161, upload-time = "2024-09-14T10:23:27.216Z" },
+    { url = "https://files.pythonhosted.org/packages/c3/ef/4ffc5e4811b9763c4d1aa0beebf43b5c1d85f5b45e0a45b66ccc243070a3/acora-2.5-cp313-cp313-win_amd64.whl", hash = "sha256:8ed8be8a29fe40eff4a6d11e20dc4b4db9c9a85113ed742eff806a43f7b1c44f", size = 134426, upload-time = "2024-09-14T10:23:28.6Z" },
+]
+
+[[package]]
+name = "ahocorapy"
+version = "1.8.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/19/b1/0dcfd841383d33e6e05a0a60da14109008bbf7f5ca2d4d6582430916492a/ahocorapy-1.8.0.tar.gz", hash = "sha256:931c05a90318fce3000baa0a0400f57934bb30b2ce54a6fff8b5a017812950aa", size = 13787, upload-time = "2026-07-21T12:17:43.235Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/85/27/d64eeec1361b27ca28a661d94505e89b35185182ee1a3851638b94887e17/ahocorapy-1.8.0-py2.py3-none-any.whl", hash = "sha256:787bb3c7bcf3b9ba87371ad53e5aac626c65c57ab2c67701bff9a813eb01d9e1", size = 10572, upload-time = "2026-07-21T12:17:41.96Z" },
+]
+
+[[package]]
+name = "ahocorasick-rs"
+version = "0.22.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions", marker = "python_full_version < '3.12'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a0/de/ab3edb66516044f8a7778ffd4acffab2c7f8974742b9fcf62153846f21ad/ahocorasick_rs-0.22.2.tar.gz", hash = "sha256:87f27a6422dbf94ec0f9fe84ac0188d4a66b5c7b2f5f6deb165f0c5e3db9769c", size = 100993, upload-time = "2025-02-06T15:47:27.57Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a0/45/b462bad1efa3f21b26cd07ddbcece6da3ae690036f634574354d61e691ed/ahocorasick_rs-0.22.2-cp311-cp311-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:908387241a8e551536b6d4b90e4eebb57f61e922500eb5dbdbc3a0eb818faf1c", size = 727592, upload-time = "2025-02-06T15:46:39.822Z" },
+    { url = "https://files.pythonhosted.org/packages/d0/06/e24a2912234b8387fdc1518e0ca7456066ad11ab4d0ee4d93f46d53ffb2e/ahocorasick_rs-0.22.2-cp311-cp311-macosx_10_12_x86_64.whl", hash = "sha256:38512ddef71f442542681d2131ff17f23f7f764126ced74a6a5a060c4d0a7319", size = 391285, upload-time = "2025-02-06T15:46:41.515Z" },
+    { url = "https://files.pythonhosted.org/packages/02/da/02431d549ac5daff8241a478e96e477087b6eccbec2d63f01a63d46d3535/ahocorasick_rs-0.22.2-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:61b46e1db2092f4814ebeb5898d68dab38a5948a118d60e9c76b5a02c0ec090f", size = 371453, upload-time = "2025-02-06T15:46:43.219Z" },
+    { url = "https://files.pythonhosted.org/packages/79/50/5cc7cbfd0ea2fd83377349d9ce12b942736772de267aec990fa074447452/ahocorasick_rs-0.22.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a14c32509ab7538f7c3101c75f72cdc0aeae4daf52ec8cb50475fdbe0b8d6034", size = 414424, upload-time = "2025-02-06T15:46:44.837Z" },
+    { url = "https://files.pythonhosted.org/packages/a7/dc/4054304c1b8434d9dd3f514ee84899bff274482846e4b95edaf8da0eeb9e/ahocorasick_rs-0.22.2-cp311-cp311-win_amd64.whl", hash = "sha256:25eb0d254c8c1f18650f06518fe06d4391cb5e72c36c1e0ae66317a23701dda3", size = 281015, upload-time = "2025-02-06T15:46:47.909Z" },
+    { url = "https://files.pythonhosted.org/packages/24/72/1f827d405f6240e93d5ea1c2f7b1b77f6b23efefa193e9abcd0497415d90/ahocorasick_rs-0.22.2-cp311-none-win_amd64.whl", hash = "sha256:eb2f7ec5ada9bbf3fad4e68e7cb0706bb62414812fbebc6482e836c61841a7fb", size = 281014, upload-time = "2025-02-06T15:46:49.515Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/ac/0ce34ae2b35aaf73153e1f5874dd47c9bacd9121638d07b292e897fbedc1/ahocorasick_rs-0.22.2-cp312-cp312-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:b5d404ceec819d983297816917fec12cca61f6ce825496adec1f701fa14ba0c8", size = 722140, upload-time = "2025-02-06T15:46:51.205Z" },
+    { url = "https://files.pythonhosted.org/packages/47/15/fd72bf185fad20a55663c14af7e99477c24a64387d69f8a997f08e96ba06/ahocorasick_rs-0.22.2-cp312-cp312-macosx_10_12_x86_64.whl", hash = "sha256:a597216caeb8d19b965d7c8c17e417b99c3b95d8c762a9c1065dce1eef562a69", size = 389364, upload-time = "2025-02-06T15:46:53.651Z" },
+    { url = "https://files.pythonhosted.org/packages/69/57/dcb0b19d5078e0351837e75b456630f86a3d8ab379877c72b1dff5b5cd70/ahocorasick_rs-0.22.2-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:b0c7b452e499b2b6f3e749bed34c72e12c6ba9256d9af2410a1744f1799dd763", size = 371479, upload-time = "2025-02-06T15:46:56.061Z" },
+    { url = "https://files.pythonhosted.org/packages/85/2f/4024ac92a3bf817e5b877d68e01cba1398541de4d9a42b3441598fa93939/ahocorasick_rs-0.22.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4bfff7aabcbd67dde053dc32c537ff69cd208caf5eabec514bc423693e46d54f", size = 414685, upload-time = "2025-02-06T15:46:58.558Z" },
+    { url = "https://files.pythonhosted.org/packages/3e/c5/9583eedf94240718c6b5cfd0315a777d2cf7850d91bb1aee1584961f0c5b/ahocorasick_rs-0.22.2-cp312-cp312-win_amd64.whl", hash = "sha256:2d1e56949a1c0f8f0012347e366ef4c911a3f40d91fa5a3b04cb0041609e11dd", size = 282903, upload-time = "2025-02-06T15:47:00.061Z" },
+    { url = "https://files.pythonhosted.org/packages/75/32/1d9d87e1bece8735f58b2d63ddc3a5c9fc01548eaf69e4f2cec76c9274f8/ahocorasick_rs-0.22.2-cp312-none-win_amd64.whl", hash = "sha256:15fa2c214ed2d0aebae2e9a8dfb562c4ffff13737833c395b849812ac49d2fc0", size = 282907, upload-time = "2025-02-06T15:47:02.637Z" },
+    { url = "https://files.pythonhosted.org/packages/12/1d/7b7db58051e79bc38cc88e3cb48b9cc6b24fd90e5dd0c7318fb06c7be24f/ahocorasick_rs-0.22.2-cp313-cp313-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:6a4f9a0df477e6d02b8191a8c9da9582b2f73fe091d940bcac76a85993f5ddf4", size = 720311, upload-time = "2025-02-06T15:47:05.115Z" },
+    { url = "https://files.pythonhosted.org/packages/af/b1/ec25f9d98375260a90363253bac4c82c0121a2818dec3a3063bd0d4bd689/ahocorasick_rs-0.22.2-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:3bddd6d699a19d3a47f422c65d9e274b95c8e08da6450251d1b311bb109b9359", size = 388437, upload-time = "2025-02-06T15:47:06.82Z" },
+    { url = "https://files.pythonhosted.org/packages/28/93/38df42a04bd04af3b5972e5dcbd8627cf896d837fcba70969c5cf31bf753/ahocorasick_rs-0.22.2-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:15ec83efcdac05455e59bfb57909d65cdfa834c44af953104fdfca79538e0e8d", size = 370932, upload-time = "2025-02-06T15:47:09.199Z" },
+    { url = "https://files.pythonhosted.org/packages/d4/71/2f78f88f5b6192ca0b5a6b53eb33277ae0cdd6dcb764df36f603f9f6c21a/ahocorasick_rs-0.22.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a805375457fb36af7fbadbb3d503f8d6373d74a0af78d067564eb29b95e6e0ce", size = 414046, upload-time = "2025-02-06T15:47:11.258Z" },
+    { url = "https://files.pythonhosted.org/packages/5b/a8/f89a9579ad46fd867c7b7fbcc4f428437008edc9118643ae48104262628d/ahocorasick_rs-0.22.2-cp313-cp313-win_amd64.whl", hash = "sha256:711f9d1d1e3c964b2aec5fb88cc4184957758ea2f8c133d890a1f9bc6d360024", size = 282608, upload-time = "2025-02-06T15:47:12.766Z" },
+    { url = "https://files.pythonhosted.org/packages/67/c1/1a9bfd9c9284d9eaa050cf031f600e02ba46554fc676c715f9ca1b2ca890/ahocorasick_rs-0.22.2-cp313-none-win_amd64.whl", hash = "sha256:53b3b99774a6b1ac1e306da3d9ae986c50582a795dd7372f7747e99615482757", size = 282610, upload-time = "2025-02-06T15:47:15.195Z" },
+]
+
+[[package]]
 name = "cffi"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -281,6 +344,42 @@ wheels = [
 ]
 
 [[package]]
+name = "pyahocorasick"
+version = "2.3.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b0/3c/dc9e31a0f004eabe2ef5d31456766555a02e2af29e159daa31266934af79/pyahocorasick-2.3.1.tar.gz", hash = "sha256:9d0f6bb522237ed7f111ed59c9e8baea7d1e75813587b6773babd43bda35db9f", size = 105024, upload-time = "2026-04-27T16:30:25.957Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7c/06/2798edbcff0d50a51f8ef527cb3f861e69f694d80043826529c33fe15aa3/pyahocorasick-2.3.1-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:3a69041f5fd665ec0edcffd9562dd0f2f23c236bbc950e18ada854e29fc3dd88", size = 59714, upload-time = "2026-04-27T16:31:26.083Z" },
+    { url = "https://files.pythonhosted.org/packages/58/00/4b475d2f26240253bc6412c509c1c103844a8eac326a1353d9bc798beb74/pyahocorasick-2.3.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:e8f9c21fd2bd72c0454ba6df0c7dbdfd7236c5cfd161fc983476fffbde92e18f", size = 33988, upload-time = "2026-04-27T16:31:27.351Z" },
+    { url = "https://files.pythonhosted.org/packages/32/9b/5eef7545f3556d8b2ca8ee943938e94a62b659ee6f6978573efd2d597e2a/pyahocorasick-2.3.1-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:0a8bed95da02e7c874818825d65e6e31d5b38c88ecba02a6c7144524074ddade", size = 113162, upload-time = "2026-04-27T16:31:28.704Z" },
+    { url = "https://files.pythonhosted.org/packages/bf/55/807c408bd7baaa137643e99b4b642abd850d83c3e80b17e17f62b5842429/pyahocorasick-2.3.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:2541c437dc0f04475729076ec36aac72604b767fa347107bcd6945d61d5ba437", size = 113939, upload-time = "2026-04-27T16:31:31.935Z" },
+    { url = "https://files.pythonhosted.org/packages/b1/d4/ffe0a07979ed128ed55c9e4ac7007be4d2048c2582de68035bd84c22e585/pyahocorasick-2.3.1-cp311-cp311-musllinux_1_2_aarch64.whl", hash = "sha256:aa05c56eaeee2e0242a84f53d9927d795d26002493c69ba8a4af1d86bdca7edb", size = 116159, upload-time = "2026-04-27T16:31:33.662Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/97/c5b6962d93d0e7870a8e0e1d76c71cd30133a96c642190531d5fae754de0/pyahocorasick-2.3.1-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:dfc4749cca4df4327dd2fcbbd49e5148e72840366023429729cf468f28c938a2", size = 116390, upload-time = "2026-04-27T16:31:35.554Z" },
+    { url = "https://files.pythonhosted.org/packages/12/63/7072ae6d6458518c277b256a14dd1b20726192e880915b4f6d3daeb0700d/pyahocorasick-2.3.1-cp311-cp311-win_amd64.whl", hash = "sha256:cb75c32f73be3f70435e49bbc5518105b54f1320a51e7da18ac989bfe93f6c1c", size = 35152, upload-time = "2026-04-27T16:31:36.828Z" },
+    { url = "https://files.pythonhosted.org/packages/29/a6/2ee9301a36c9d6bcd7e745e8a98e72fddf1ff1cd3ae899f498383c3ad1c9/pyahocorasick-2.3.1-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:f0df14cb10ed1e942a30c0f11d242472452e7c567acbf3ac070e5d6912b71ca9", size = 60112, upload-time = "2026-04-27T16:31:38.39Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/c6/f242c7966d8207822d7ecb183101522ca03df5f302ee6520fe4412f03fae/pyahocorasick-2.3.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:873911f1d80acd82ac00aae277a9a2b335a0c0cac0a0ef1c6635b57badc6f7a6", size = 34154, upload-time = "2026-04-27T16:31:39.719Z" },
+    { url = "https://files.pythonhosted.org/packages/f7/01/0a7387a6327f4ef9b7dcf3cea84dfea3e4b0e85eb37a52b612985b1f9a9a/pyahocorasick-2.3.1-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:9a4d4f5b05ce9d8af82c40ed39cd6892613e9e8bf1b5e6ea79009c566430adb1", size = 113543, upload-time = "2026-04-27T16:31:41.311Z" },
+    { url = "https://files.pythonhosted.org/packages/a1/f2/d13807476195e4ec5999a78f22db592a64da54229c9183438f3165105779/pyahocorasick-2.3.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:9ec1d3465f25a5063c7eaa85ecb106cbe256064669c754e0b13b2483cf613a98", size = 114873, upload-time = "2026-04-27T16:31:42.625Z" },
+    { url = "https://files.pythonhosted.org/packages/af/32/d79302845be8629f9aee2a3dbeb9ad089b036f089e99589a08814e7e5910/pyahocorasick-2.3.1-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:e4e1e90eb2e755c79b9b904fd8adcca61c22b4b48811b9435f0c4b2d718895d6", size = 116455, upload-time = "2026-04-27T16:31:44.366Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/c9/2e3019eb9f4404dc1fe1309535d1220740cc95275ad1b4a70f7f891cb296/pyahocorasick-2.3.1-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:e3922f66721b5b777eae758d2a0acffd98ee97dc7e6e452ba533d1c5892e15b7", size = 117863, upload-time = "2026-04-27T16:31:45.831Z" },
+    { url = "https://files.pythonhosted.org/packages/3a/6e/5fa2f6fafb7a5bb82cad6e2ef3c8eed7c859ba16242766a5a425e19334b5/pyahocorasick-2.3.1-cp312-cp312-win_amd64.whl", hash = "sha256:f5cc3c021be241fe9317c5991f8efba2b876e3956691322ad9e55c0d9ff7c599", size = 35258, upload-time = "2026-04-27T16:31:47.053Z" },
+    { url = "https://files.pythonhosted.org/packages/31/16/4ea7db7a118778a2f56b217b8f142d1bd55e10cb6c6d59329bc58c41952a/pyahocorasick-2.3.1-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:1b16eab55f961671c6eff5ead4e3fda6e85982acea86fda734b68e39e52dcd3b", size = 60118, upload-time = "2026-04-27T16:31:48.173Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/53/08c717e8696b3f243be89278155512a360a13b5a11bfe87a3a417f180c5e/pyahocorasick-2.3.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:ec6908893dffc271c1f89fe5a0f6ae872c5b7fdfb82ce032185a1fcf02339a60", size = 34160, upload-time = "2026-04-27T16:31:49.287Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/11/4464450c9c44719ab47082eda69424de22af51ef68c482f7e8c48a30a727/pyahocorasick-2.3.1-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:43e79e7f1737e8bd5290ee61bfbbc0af0a44975b8aa719ffbb00e3cd8c5c8e35", size = 113498, upload-time = "2026-04-27T16:31:50.925Z" },
+    { url = "https://files.pythonhosted.org/packages/64/e0/398f558e004616411ae6914666f0aa51eb019405ef4f48358e6a9b26bc4d/pyahocorasick-2.3.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:343c93387146ddef771118cab8fc60e3be1c9c5595b647ad6c898fc940a63e20", size = 114814, upload-time = "2026-04-27T16:31:52.329Z" },
+    { url = "https://files.pythonhosted.org/packages/84/dc/a7c78f3fafdee825ab2a69c7aeedc8c3bf1a82f69a710071bbeac3d8be29/pyahocorasick-2.3.1-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:648ee2e1dae6753cbe153d610cd8208f3da00e20456d3696de49a7606106afad", size = 116447, upload-time = "2026-04-27T16:31:54.196Z" },
+    { url = "https://files.pythonhosted.org/packages/70/99/f028911b158fd9d6ea0c50a99b17b798f4cbb4d14aedf9bc07dcebfd406c/pyahocorasick-2.3.1-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:7b52bb618a6d29223470c5518daa59f319cbbca878373dcec3ca89a63759c0e5", size = 117863, upload-time = "2026-04-27T16:31:55.672Z" },
+    { url = "https://files.pythonhosted.org/packages/30/75/5d5d377fab5b93462ff22496ac5a09725534ec37217626b0a5480c321e5a/pyahocorasick-2.3.1-cp313-cp313-win_amd64.whl", hash = "sha256:31c743e80e92f81c390214b69f474945689f0f83db8d9bae7118a4623e5da63d", size = 35244, upload-time = "2026-04-27T16:31:56.813Z" },
+    { url = "https://files.pythonhosted.org/packages/00/0b/ce8637d57f122533067e5080cbd54d4698968acd2a16921469c838ee1ae3/pyahocorasick-2.3.1-cp314-cp314-macosx_10_15_universal2.whl", hash = "sha256:9b87fa566bd71b46407ea8cfd86ddc6c97ba7f20eb29041ce9b5213b111e76be", size = 60047, upload-time = "2026-04-27T16:31:58.019Z" },
+    { url = "https://files.pythonhosted.org/packages/63/8d/f98d8caad8bed8dc70b5b406704ca652c5bb59168984424e61732f31de50/pyahocorasick-2.3.1-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:523c5460afae4b9228bb9df7571ef23b90ceb3411428beb7df167d696ae054dc", size = 34114, upload-time = "2026-04-27T16:31:59.425Z" },
+    { url = "https://files.pythonhosted.org/packages/60/97/b06f783364347a369c86344dbebb194535b7f41bf1df0f42dc4e64e3b655/pyahocorasick-2.3.1-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:0e59226baf6ffb5acb6f72868ef345a4bd23d2a30ef08a9e1bf51043ea9b430d", size = 113504, upload-time = "2026-04-27T16:32:00.735Z" },
+    { url = "https://files.pythonhosted.org/packages/29/b5/54b057c13eae27ceca51e68e13e1194e4c624d624b0369b571177f390a62/pyahocorasick-2.3.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:7c90328fb64f6d1c24bbf969194f4fe0b3aacbdddadf28ec920b34a524681a54", size = 114564, upload-time = "2026-04-27T16:32:02.184Z" },
+    { url = "https://files.pythonhosted.org/packages/79/c1/a0c0ed44ebe2a0e62bebc545158707b9543fa685c384a9af90bb568444cf/pyahocorasick-2.3.1-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:8b10d29fb3eddf8228e41d285f2e052efddb99b6dd1ed1e0f28f00d0d0570005", size = 116371, upload-time = "2026-04-27T16:32:03.967Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/db/d174d6bbc6caa811ac3c3695de28785b36d83ee94aecd461f58e621068fc/pyahocorasick-2.3.1-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:ba7b98de0ff3203e2cd8c27682f6934c0d893cd97e65a45b8478e468d9919c90", size = 117877, upload-time = "2026-04-27T16:32:05.407Z" },
+    { url = "https://files.pythonhosted.org/packages/c5/96/37c50ac951bb0260ec38d8d12e5b51587ef1ef4035c279088f2771544b28/pyahocorasick-2.3.1-cp314-cp314-win_amd64.whl", hash = "sha256:4acb11a0a2ff10519465749d22ad70789e9fe7f81dc8fe9957a8868e499e18ab", size = 35987, upload-time = "2026-04-27T16:32:07.08Z" },
+]
+
+[[package]]
 name = "pycparser"
 version = "3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -410,10 +509,16 @@ wheels = [
 
 [[package]]
 name = "secretsweeper"
-version = "0.0.1a7"
+version = "0.0.1a8"
 source = { editable = "." }
 
 [package.dev-dependencies]
+benchmark = [
+    { name = "acora" },
+    { name = "ahocorapy" },
+    { name = "ahocorasick-rs" },
+    { name = "pyahocorasick" },
+]
 dev = [
     { name = "gevent" },
     { name = "hatchling" },
@@ -427,6 +532,12 @@ dev = [
 [package.metadata]
 
 [package.metadata.requires-dev]
+benchmark = [
+    { name = "acora", specifier = ">=2.5,<3.0" },
+    { name = "ahocorapy", specifier = ">=1.0.2,<2.0.0" },
+    { name = "ahocorasick-rs", specifier = ">=0.22.0,<0.23.0" },
+    { name = "pyahocorasick", specifier = ">=2.1.0,<3.0.0" },
+]
 dev = [
     { name = "gevent", specifier = ">=25.4.1,<26.0.0" },
     { name = "hatchling", specifier = "==1.28.0" },
@@ -469,6 +580,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/c3/36/f51d4666d2de6cf33c1f3a1fcc4bb6b70b197dd6ceaa491eef71d78fe8e8/ty-0.0.56-py3-none-win32.whl", hash = "sha256:b30687bb5cd9729d34c889a289edf32770388d9bb05243e534e723fb45e0381b", size = 11093759, upload-time = "2026-07-01T16:44:49.171Z" },
     { url = "https://files.pythonhosted.org/packages/5e/b4/8fb5d4acfa4afb152245b20fa263069a7547bd1f8e4bfca4eda280c897d7/ty-0.0.56-py3-none-win_amd64.whl", hash = "sha256:ad4c8c47b6f4e3f9ed3fc0b1a5d650088d229e17dd8f63c1826d6bbe94cc3235", size = 12100327, upload-time = "2026-07-01T16:44:51.26Z" },
     { url = "https://files.pythonhosted.org/packages/b8/fc/6a183e71edde90d0c35c2303f23f7a45b6891d1a2c45daf7b8f869831e19/ty-0.0.56-py3-none-win_arm64.whl", hash = "sha256:57538f273d444a5f1293fa7860e967178afe3917611fc5eff16b64e1204fe0d6", size = 11538780, upload-time = "2026-07-01T16:44:53.8Z" },
+]
+
+[[package]]
+name = "typing-extensions"
+version = "4.16.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f6/cc/6253133b5bb138fc3306cebfbda2c520f545d36b5be2c7255cc528bb45d6/typing_extensions-4.16.0.tar.gz", hash = "sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5", size = 113555, upload-time = "2026-07-02T08:40:05.92Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl", hash = "sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8", size = 45571, upload-time = "2026-07-02T08:40:04.659Z" },
 ]
 
 [[package]]

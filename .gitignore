@@ -21,3 +21,6 @@ wheels/
 *.so
 *.dylib
 *.dll
+
+# Generated benchmark corpus/results (regenerate via benchmarks/gen_corpus.py + bench.py)
+/benchmarks/data/

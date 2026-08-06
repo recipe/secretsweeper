@@ -102,6 +102,12 @@ const Node = struct {
 
 /// Aho-Corasick automaton class.
 pub const Aho = struct {
+    /// Memory cap for `dfa_table` + `dfa_match` combined (each entry is 4 bytes, so
+    /// this bounds `num_states * num_classes` at 8 bytes/entry). Pattern sets that
+    /// would exceed it fall back to `build`/`goTo`, which stays fixed-memory
+    /// regardless of pattern size — see memory note `no-unbounded-dfa-memory`.
+    pub const DFA_MEMORY_CAP: usize = 20 * 1024 * 1024;
+
     allocator: std.mem.Allocator,
 
     // Automaton related variables:
@@ -112,6 +118,26 @@ pub const Aho = struct {
     /// input walks through the root, so this keeps the hot path to a single load
     /// while inner nodes stay sparse.
     root_moves: [256]u32 = [_]u32{0} ** 256,
+    /// Byte -> class, computed by `buildDfa`. Bytes with no trie edge anywhere
+    /// share one class, since `goTo` treats them all identically.
+    byte_class: [256]u8 = [_]u8{0} ** 256,
+    num_classes: usize = 0,
+    /// Premultiplied: `dfa_table[state * num_classes + byte_class[c]]` is
+    /// `next_state * num_classes`, ready to use directly as the next lookup index.
+    dfa_table: []u32 = &.{},
+    /// Parallel to `dfa_table`: matched pattern length (0 if not a match) at the
+    /// same index, so match-checking needs no extra address computation.
+    dfa_match: []u32 = &.{},
+    /// Set by `insert` for every pattern of length >= 2: `bigram_ok[(first << 8) |
+    /// second]` is true if some pattern starts with that exact 2-byte prefix.
+    /// Used by `mask`'s DFA dispatch to skip a byte entirely (stay at root, no
+    /// array lookup at all) when it provably cannot start a match — see the
+    /// gate in `mask` for the correctness argument.
+    bigram_ok: [65536]bool = [_]bool{false} ** 65536,
+    /// Set by `insert` for every pattern of length exactly 1. The bigram gate
+    /// above must never skip a byte that is itself a complete match, since a
+    /// 1-byte pattern has no "second byte" to record in `bigram_ok`.
+    one_byte_match: [256]bool = [_]bool{false} ** 256,
     /// Total number of patterns.
     pidx: usize,
     /// The total number of nodes.
@@ -182,6 +208,8 @@ pub const Aho = struct {
             node.deinitEdges(self.allocator);
         }
         self.nodes.deinit(self.allocator);
+        if (self.dfa_table.len > 0) self.allocator.free(self.dfa_table);
+        if (self.dfa_match.len > 0) self.allocator.free(self.dfa_match);
     }
 
     /// Returns the next state for byte `c`, following fail links while the state
@@ -203,6 +231,11 @@ pub const Aho = struct {
         if (pattern.len == 0) {
             // Ignore empty patterns.
             return null;
+        }
+        if (pattern.len == 1) {
+            self.one_byte_match[pattern[0]] = true;
+        } else {
+            self.bigram_ok[(@as(usize, pattern[0]) << 8) | pattern[1]] = true;
         }
         var u: usize = 0;
         for (pattern) |c| {
@@ -259,7 +292,99 @@ pub const Aho = struct {
         }
     }
 
-    /// Mask all patterns in the text string with the star character.
+    /// One decided piece of output. `literal` copies `[start, end)` of the
+    /// combined (reminder + text) input; `stars` emits a run of `*`. Kept as a
+    /// list, not one entry per match, because a later overlapping match's
+    /// star-cap can reach back through stars an earlier match already emitted —
+    /// `ensureTailStars` treats that as already satisfied instead of duplicating it.
+    const Op = union(enum) {
+        literal: struct { start: usize, end: usize },
+        stars: usize,
+    };
+
+    /// Drops the last `n` bytes of decided output from `ops`. Always lands inside
+    /// the literal run just pushed for the current match (see `mask`): that run's
+    /// length equals `num` exactly, and `diff <= num` always holds.
+    fn trimTail(ops: *std.ArrayList(Op), n: usize) void {
+        var remaining = n;
+        while (remaining > 0) {
+            const last_idx = ops.items.len - 1;
+            switch (ops.items[last_idx]) {
+                .literal => |lit| {
+                    const len = lit.end - lit.start;
+                    if (len <= remaining) {
+                        ops.shrinkRetainingCapacity(last_idx);
+                        remaining -= len;
+                    } else {
+                        ops.items[last_idx] = .{ .literal = .{ .start = lit.start, .end = lit.end - remaining } };
+                        remaining = 0;
+                    }
+                },
+                .stars => |count| {
+                    if (count <= remaining) {
+                        ops.shrinkRetainingCapacity(last_idx);
+                        remaining -= count;
+                    } else {
+                        ops.items[last_idx] = .{ .stars = count - remaining };
+                        remaining = 0;
+                    }
+                },
+            }
+        }
+    }
+
+    /// Ensures the last `size` bytes of decided output are stars, converting or
+    /// splitting trailing `literal` runs as needed. Stops as soon as it meets a
+    /// `stars` run that already covers the rest of `size` — nothing to convert
+    /// there, which is what keeps a chain of overlapping star-caps idempotent.
+    fn ensureTailStars(ops: *std.ArrayList(Op), allocator: std.mem.Allocator, size: usize) !void {
+        var remaining = size;
+        var i = ops.items.len;
+        while (remaining > 0 and i > 0) {
+            i -= 1;
+            switch (ops.items[i]) {
+                .stars => |count| {
+                    if (count <= remaining) {
+                        remaining -= count;
+                        continue;
+                    }
+                    break; // already fully covers what's left; nothing to convert
+                },
+                .literal => |lit| {
+                    const len = lit.end - lit.start;
+                    if (len <= remaining) {
+                        ops.items[i] = .{ .stars = len };
+                        remaining -= len;
+                        continue;
+                    }
+                    const back = remaining;
+                    const front_end = lit.end - back;
+                    ops.items[i] = .{ .literal = .{ .start = lit.start, .end = front_end } };
+                    try ops.insert(allocator, i + 1, .{ .stars = back });
+                    break;
+                },
+            }
+        }
+    }
+
+    /// Masks all patterns in `text` with `*`.
+    ///
+    /// Two passes: the first walks the automaton (DFA dispatch when built for
+    /// this automaton, else the fail-link-walking `goTo`) and records an `Op`
+    /// per match instead of writing bytes, so a rare match doesn't force output
+    /// work for every byte in between. The second replays the op list to build
+    /// the output in one pass of bulk memcpy/memset.
+    ///
+    /// `self.state` is premultiplied (`real_state * num_classes`) under DFA
+    /// dispatch, a plain index otherwise; both agree on 0, so resetting or
+    /// carrying it across calls needs no special-casing either way.
+    ///
+    /// The DFA branch also gates on `bigram_ok`/`one_byte_match` at the root: a
+    /// byte that provably cannot start any match skips the `dfa_table`/`dfa_match`
+    /// lookup entirely, which is a large win specifically for sparse corpora
+    /// (few real matches spread through a lot of non-matching text) since most
+    /// bytes never leave the root. See the gate's own comment for the
+    /// correctness argument.
     pub fn mask(self: *Aho, args: struct {
         /// An input string.
         text: []const u8,
@@ -276,54 +401,119 @@ pub const Aho = struct {
             self.state = 0;
             self.last_occur = .{};
         }
-        const reminder_len = if (self.reminder) |reminder| reminder.len else 0;
+        const reminder: []const u8 = if (self.reminder) |r| r else &[_]u8{};
+        const reminder_len = reminder.len;
         const input_len = reminder_len + args.text.len;
-        // Result buffer.
-        var buf = try self.allocator.alloc(u8, input_len);
-        // The actual buffer length.
-        var buf_len: usize = 0;
-        if (reminder_len > 0) {
-            // Copy reminder to the buffer to restore the state and continue.
-            @memcpy(buf[0..reminder_len], self.reminder.?[0..reminder_len]);
-            buf_len = reminder_len;
-        }
-        for (args.text, 0..) |c, pos| {
-            // Walk the automaton.
-            self.state = self.goTo(self.state, c);
-            // Copy from input character by character.
-            buf[buf_len] = c;
-            buf_len += 1;
-            // Pattern found and should be masked.
-            if (self.nodes.items[self.state].id > 0) {
-                // This is the difference between the last character positions of the two patterns.
-                const num = self.last_occur.overlapReminder(pos, self.nodes.items[self.state].len);
-                self.last_occur.cum_len = if (num == MAX_INT) self.nodes.items[self.state].len else self.last_occur.cum_len + num;
-                // Replace the last found pattern position and length.
-                // Defer is used because under some conditions the block may exit with the continue below.
-                defer {
-                    self.last_occur.pos = @intCast(pos);
-                    self.last_occur.len = self.nodes.items[self.state].len;
-                }
-                // Difference between the pattern length and max number of stars.
-                // If this difference is greater than 0 we need to limit the mask.
-                // For overlapping patterns, we must account for the stars already printed by the previous pattern.
-                var diff: usize = 0;
-                if (self.last_occur.cum_len > args.max_stars) {
-                    diff = self.last_occur.cum_len - args.max_stars;
-                    diff = @min(num, diff);
-                }
-                buf_len -= diff;
-                var size = self.nodes.items[self.state].len - diff;
-                if (num < MAX_INT) {
-                    if (self.last_occur.len >= args.max_stars) {
+
+        // Pass 1: search. `pos` is absolute (reminder ++ text) position — only
+        // `args.text` is walked here since `self.state`/`self.last_occur` already
+        // reflect having consumed `reminder` in a previous call.
+        var ops = try std.ArrayList(Op).initCapacity(self.allocator, 0);
+        defer ops.deinit(self.allocator);
+        // Absolute position up to which an `Op` already accounts for every byte
+        // seen this call. Starts at 0, not `reminder_len`: the reminder is never
+        // walked byte-by-byte, but a match's star-cap can still reach into it.
+        var flushed_upto: usize = 0;
+        const use_dfa = self.dfa_table.len > 0;
+        for (args.text, 0..) |c, local_pos| {
+            const pos = reminder_len + local_pos;
+            var match_len: usize = 0;
+            if (use_dfa) {
+                // At the root, a byte that starts no pattern (or starts only
+                // 2+-byte patterns whose second byte doesn't follow) can never
+                // produce a match here, and always lands back at root either
+                // way — so it's provably safe to skip straight to the next byte
+                // without touching `dfa_table`/`dfa_match` at all. Guarded by
+                // `one_byte_match` first: a 1-byte pattern match must never be
+                // skipped, and `bigram_ok` alone has no way to record it (no
+                // second byte to check). The last byte of a chunk always falls
+                // through (can't peek ahead), which matters for streaming: the
+                // reminder-depth bookkeeping needs `self.state` genuinely
+                // updated for that byte, not skipped.
+                if (self.state == 0 and !self.one_byte_match[c] and local_pos + 1 < args.text.len) {
+                    const next_c = args.text[local_pos + 1];
+                    if (!self.bigram_ok[(@as(usize, c) << 8) | next_c]) {
                         continue;
                     }
+                }
+                const idx = self.state + self.byte_class[c];
+                self.state = self.dfa_table[idx];
+                match_len = self.dfa_match[idx];
+            } else {
+                self.state = self.goTo(self.state, c);
+                const node = self.nodes.items[self.state];
+                match_len = if (node.id > 0) node.len else 0;
+            }
+            if (match_len == 0) continue;
+            // This is the difference between the last character positions of the two patterns.
+            const num = self.last_occur.overlapReminder(pos, match_len);
+            self.last_occur.cum_len = if (num == MAX_INT) match_len else self.last_occur.cum_len + num;
+            // Replace the last found pattern position and length.
+            defer {
+                self.last_occur.pos = @intCast(pos);
+                self.last_occur.len = match_len;
+            }
+            // Difference between the pattern length and max number of stars.
+            // If this difference is greater than 0 we need to limit the mask.
+            // For overlapping patterns, we must account for the stars already printed by the previous pattern.
+            var diff: usize = 0;
+            if (self.last_occur.cum_len > args.max_stars) {
+                diff = self.last_occur.cum_len - args.max_stars;
+                diff = @min(num, diff);
+            }
+            var size = match_len - diff;
+            if (num < MAX_INT) {
+                if (self.last_occur.len >= args.max_stars) {
+                    size = 0;
+                } else {
                     size = @min(num, size);
                 }
-                // Mask the pattern in the buffer.
-                @memset(buf[buf_len - size..buf_len], '*');
+            }
+            if (diff > 0 or size > 0) {
+                // `pos + 1 - flushed_upto` equals `num` exactly (both the reminder
+                // and every prior match set `flushed_upto` to their own `pos + 1`),
+                // so `diff <= num` guarantees `trimTail` never reaches past this run.
+                if (pos + 1 > flushed_upto) {
+                    try ops.append(self.allocator, .{ .literal = .{ .start = flushed_upto, .end = pos + 1 } });
+                }
+                flushed_upto = pos + 1;
+                if (diff > 0) trimTail(&ops, diff);
+                if (size > 0) try ensureTailStars(&ops, self.allocator, size);
             }
         }
+
+        // Pass 2: reconstruct. Copies a `[start, end)` span of the combined
+        // reminder++text input, splitting at the reminder/text boundary as needed.
+        var buf = try self.allocator.alloc(u8, input_len);
+        var buf_len: usize = 0;
+        const copyRange = struct {
+            fn call(dst: []u8, dst_len: *usize, rem: []const u8, txt: []const u8, rlen: usize, start: usize, end: usize) void {
+                if (end <= start) return;
+                var s = start;
+                if (s < rlen) {
+                    const e = @min(end, rlen);
+                    @memcpy(dst[dst_len.*..][0 .. e - s], rem[s..e]);
+                    dst_len.* += e - s;
+                    s = e;
+                }
+                if (s < end) {
+                    @memcpy(dst[dst_len.*..][0 .. end - s], txt[s - rlen .. end - rlen]);
+                    dst_len.* += end - s;
+                }
+            }
+        }.call;
+
+        for (ops.items) |op| {
+            switch (op) {
+                .literal => |lit| copyRange(buf, &buf_len, reminder, args.text, reminder_len, lit.start, lit.end),
+                .stars => |count| {
+                    @memset(buf[buf_len..][0..count], '*');
+                    buf_len += count;
+                },
+            }
+        }
+        copyRange(buf, &buf_len, reminder, args.text, reminder_len, flushed_upto, input_len);
+
         var new_reminder_len: usize = 0;
         if (args.is_streaming) {
             self.reset_reminder();
@@ -331,7 +521,10 @@ pub const Aho = struct {
             // a future match, so retaining more would grow the reminder without bound
             // on inputs that keep the automaton away from the starting state.
             // Masking may have shrunk the buffer below that depth; retain what exists.
-            new_reminder_len = @min(self.nodes.items[self.state].depth, buf_len);
+            // `self.state` is premultiplied under DFA dispatch, so recover the real node
+            // index once here (once per call, not per byte, so the division is cheap).
+            const real_state = if (use_dfa) self.state / self.num_classes else self.state;
+            new_reminder_len = @min(self.nodes.items[real_state].depth, buf_len);
             if (new_reminder_len > 0) {
                 self.reminder = try self.allocator.alloc(u8, new_reminder_len);
                 @memcpy(self.reminder.?, buf[buf_len - new_reminder_len..buf_len]);
@@ -343,6 +536,118 @@ pub const Aho = struct {
         }
         return buf;
     }
+
+    /// Builds the byte-class-compressed, premultiplied DFA that `mask` dispatches
+    /// through instead of `goTo`. Returns `false` (without allocating) if the
+    /// projected table would exceed `DFA_MEMORY_CAP` — caller falls back to the
+    /// classic `build`/`goTo` instead. Computes its own fail links via its own BFS;
+    /// an automaton only ever uses one of `build` or `buildDfa`, never both (see
+    /// `ss_build`).
+    pub fn buildDfa(self: *Aho) !bool {
+        // A byte is "relevant" if some node has a direct trie edge for it. Every
+        // irrelevant byte behaves identically under `goTo` — no edge anywhere, so
+        // it always falls back to state 0 — so one shared class for all of them
+        // is exact, not an approximation.
+        var used = [_]bool{false} ** 256;
+        for (self.nodes.items) |node| {
+            switch (node.edges) {
+                .none => {},
+                .one => |e| used[e.key] = true,
+                .few => |few| {
+                    for (0..few.count) |i| used[few.keys[i]] = true;
+                },
+                .dense => |dense| {
+                    for (dense, 0..) |id, i| {
+                        if (id != 0) used[i] = true;
+                    }
+                },
+            }
+        }
+
+        // u16, not u8: `next_class` can reach 256 (every byte used, no catch-all),
+        // which wraps silently in ReleaseFast as a u8 and defeats the cap check below.
+        var representative = [_]u8{0} ** 256;
+        var next_class: u16 = 0;
+        for (0..256) |i| {
+            if (used[i]) {
+                self.byte_class[i] = @intCast(next_class);
+                representative[next_class] = @intCast(i);
+                next_class += 1;
+            }
+        }
+        // Skip the catch-all class when all 256 bytes are used: nothing left to
+        // catch, and reserving one anyway would index `representative` out of bounds.
+        var has_unused = false;
+        for (used) |u| {
+            if (!u) {
+                has_unused = true;
+                break;
+            }
+        }
+        if (has_unused) {
+            const catch_all_class = next_class;
+            for (0..256) |i| {
+                if (!used[i]) {
+                    self.byte_class[i] = @intCast(catch_all_class);
+                    representative[catch_all_class] = @intCast(i);
+                }
+            }
+            next_class += 1;
+        }
+        self.num_classes = next_class;
+        const nc = self.num_classes;
+        const num_states = self.total + 1;
+
+        // Bail out before allocating anything if the compressed tables would still
+        // exceed the memory cap for this pattern set.
+        const entries = std.math.mul(usize, num_states, nc) catch return false;
+        const bytes_needed = std.math.mul(usize, entries, 8) catch return false;
+        if (bytes_needed > DFA_MEMORY_CAP) {
+            return false;
+        }
+
+        // Classic BFS DFA construction, but walking classes (via one representative
+        // raw byte per class) instead of all 256 raw byte values.
+        const raw = try self.allocator.alloc(u32, num_states * nc);
+        defer self.allocator.free(raw);
+
+        for (0..nc) |cl| {
+            raw[cl] = @intCast(self.nodes.items[0].child(representative[cl]) orelse 0);
+        }
+
+        var queue = try std.ArrayList(usize).initCapacity(self.allocator, 0);
+        defer queue.deinit(self.allocator);
+        try queue.append(self.allocator, 0);
+        var head: usize = 0;
+        while (head < queue.items.len) {
+            const u = queue.items[head];
+            head += 1;
+            const fail_u = self.nodes.items[u].fail;
+            for (0..nc) |cl| {
+                const c = representative[cl];
+                if (self.nodes.items[u].child(c)) |v| {
+                    if (u != 0) {
+                        self.nodes.items[v].fail = raw[fail_u * nc + cl];
+                    }
+                    raw[u * nc + cl] = @intCast(v);
+                    try queue.append(self.allocator, v);
+                } else if (u != 0) {
+                    raw[u * nc + cl] = raw[fail_u * nc + cl];
+                }
+            }
+        }
+
+        self.dfa_table = try self.allocator.alloc(u32, num_states * nc);
+        self.dfa_match = try self.allocator.alloc(u32, num_states * nc);
+        const nc32: u32 = @intCast(nc);
+        for (0..num_states * nc) |i| {
+            const next_state = raw[i];
+            self.dfa_table[i] = next_state * nc32;
+            self.dfa_match[i] = self.nodes.items[next_state].len;
+        }
+        return true;
+    }
+
 };
 
 test "Aho" {

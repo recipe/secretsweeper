@@ -1,6 +1,6 @@
 [project]
 name = "secretsweeper"
-version = "0.0.1a7"
+version = "0.0.1a8"
 description = "Fast, in-memory secret-sanitizing CPython module written in Zig, designed for speed."
 authors = [{ name = "Vitaliy Demidov", email = "notifications.recipient@gmail.com" }]
 readme = "README.md"
@@ -44,6 +44,12 @@ exclude = [
     "secretsweeper/*.dll",
 ]
 
+[[tool.ty.overrides]]
+include = ["benchmarks/**"]
+
+[tool.ty.overrides.analysis]
+allowed-unresolved-imports = ["ahocorasick", "ahocorasick_rs", "acora", "ahocorapy.**"]
+
 [tool.ruff]
 line-length = 120
 
@@ -59,4 +65,10 @@ dev = [
     "pytest (>=9.0.3,<10.0.0)",
     "ruff (>=0.13.3,<0.14.0)",
     "ty (==0.0.56)"
+]
+benchmark = [
+    "acora (>=2.5,<3.0)",
+    "ahocorapy (>=1.0.2,<2.0.0)",
+    "ahocorasick-rs (>=0.22.0,<0.23.0)",
+    "pyahocorasick (>=2.1.0,<3.0.0)",
 ]
