@@ -133,7 +133,7 @@ SecretSweeper's Zig core is within a few percent of the fastest Rust-backed Aho-
 
 ## Getting involved
 
-🌱 Contributions are always welcome – whether it’s a bug report, a small fix, or a big idea. If something here sparks your curiosity, jump in and help shape it. Open an issue or a pull request – even small contributions make a difference.
+🌱 Contributions are always welcome – whether it’s a bug report, a small fix, or a big idea. If something here sparks your curiosity, jump in and help shape it. Open an issue or a pull request – even small contributions make a difference. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to set up a development environment and run the tests.
 
 ## License
 

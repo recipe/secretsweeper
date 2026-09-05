@@ -1,7 +1,14 @@
 import io
+import pkgutil
 import typing
 
-from . import _core
+# An editable (development) install resolves this package to the source tree, while the
+# build installs the compiled library and extension module into site-packages/secretsweeper.
+# Extending the search path with every `secretsweeper` directory on sys.path lets `_core`
+# find them there; for a regular install this is a no-op.
+__path__ = pkgutil.extend_path(__path__, __name__)
+
+from . import _core  # noqa: E402
 from ._core import MAX_NUMBER_OF_STARS, mask
 
 __all__ = ["MAX_NUMBER_OF_STARS", "StreamWrapper", "mask"]

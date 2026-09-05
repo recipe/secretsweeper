@@ -29,13 +29,15 @@ _LIBRARY_NAMES = {
 
 
 def _load_library() -> ctypes.CDLL:
-    package_dir = pathlib.Path(__file__).parent
+    # Every directory on the package's search path (see __init__.py), not just this one.
+    package_dirs = [pathlib.Path(p) for p in sys.modules[__name__.rpartition(".")[0]].__path__]
     names = _LIBRARY_NAMES.get(sys.platform, ("libsecretsweeper.so",))
-    for name in names:
-        path = package_dir / name
-        if path.exists():
-            return ctypes.CDLL(str(path))
-    raise ImportError(f"cannot find the secretsweeper shared library in {package_dir}")
+    for package_dir in package_dirs:
+        for name in names:
+            path = package_dir / name
+            if path.exists():
+                return ctypes.CDLL(str(path))
+    raise ImportError(f"cannot find the secretsweeper shared library in {package_dirs}")
 
 
 _lib = _load_library()
