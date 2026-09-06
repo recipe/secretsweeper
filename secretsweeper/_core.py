@@ -17,7 +17,7 @@ else:
     try:
         from secretsweeper import _native
     except ImportError:  # platforms where the extension is not built (e.g. Windows)
-        _native = None  # ty: ignore[invalid-assignment]
+        _native = None
 
 MAX_NUMBER_OF_STARS = 15
 
