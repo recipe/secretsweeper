@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-05
+
+### Added
+
+- `CONTRIBUTING.md` with the development workflow.
+- CI refuses to build or publish a release tag that does not name the version
+  in `pyproject.toml`.
+
+### Changed
+
+- Development installs no longer need the compiled library copied into the
+  source tree.
+- CI runs on Python 3.14 in every uv-based job, with `uv` 0.12.10 installed via
+  `setup-uv` v10.0.1 (from 0.8.22 via v7).
+- `ty` bumped to 0.0.78 (from 0.0.56) in the dev dependencies and the
+  pre-commit hook.
+
 ## [0.0.1-alpha.8] - 2026-08-05
 
 ### Added
@@ -111,6 +128,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pipelines.
 
 [unreleased]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.8...HEAD
+[0.1.0]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.8...0.1.0
 [0.0.1-alpha.8]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.7...0.0.1-alpha.8
 [0.0.1-alpha.7]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.6...0.0.1-alpha.7
 [0.0.1-alpha.6]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.5...0.0.1-alpha.6

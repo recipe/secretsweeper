@@ -15,10 +15,10 @@ uv run --group benchmark python benchmarks/report.py
 | CPU | Apple M1 Pro |
 | Cores | 10 physical / 10 logical |
 | Memory | 32.0 GiB |
-| OS | Darwin 25.5.0 (arm64) |
-| Python | CPython 3.13.7 |
+| OS | Darwin 25.6.0 (arm64) |
+| Python | CPython 3.14.6 |
 | Zig | 0.16.0 |
-| secretsweeper | 0.0.1a8 |
+| secretsweeper | 0.1.0 |
 
 ## Corpus
 
@@ -32,18 +32,18 @@ Each engine measured as a single total wall-clock call (build/compile + search +
 xychart-beta
     title "Masking throughput - min MB/s across interleaved rounds (higher is better)"
     x-axis ["secretsweeper", "ahocorasick_rs", "acora", "pyahocorasick", "re", "ahocorapy"]
-    y-axis "MB/s" 0 --> 1061
-    bar [964.9, 598.0, 176.7, 125.6, 82.8, 20.4]
+    y-axis "MB/s" 0 --> 1064
+    bar [966.9, 604.8, 182.0, 131.5, 84.2, 22.2]
 ```
 
 | Engine | min | avg | min throughput | vs. fastest | correct |
 |---|---:|---:|---:|---:|:---:|
-| secretsweeper `0.0.1a8` | 108.7 ms | 127.2 ms | 964.9 MB/s | 1.00x | ✅ |
-| ahocorasick_rs `0.22.2` | 175.4 ms | 179.0 ms | 598.0 MB/s | 1.61x | ✅ |
-| acora `2.5` | 593.5 ms | 604.7 ms | 176.7 MB/s | 5.46x | ✅ |
-| pyahocorasick `2.3.1` | 835.0 ms | 873.9 ms | 125.6 MB/s | 7.68x | ✅ |
-| re (stdlib regex) `python 3.13.7` | 1266.0 ms | 1276.8 ms | 82.8 MB/s | 11.65x | ✅ |
-| ahocorapy (pure python) `1.8.0` | 5131.4 ms | 5403.4 ms | 20.4 MB/s | 47.22x | ✅ |
+| secretsweeper `0.1.0` | 108.5 ms | 123.1 ms | 966.9 MB/s | 1.00x | ✅ |
+| ahocorasick_rs `1.0.3` | 173.4 ms | 175.0 ms | 604.8 MB/s | 1.60x | ✅ |
+| acora `2.5` | 576.3 ms | 585.4 ms | 182.0 MB/s | 5.31x | ✅ |
+| pyahocorasick `2.3.1` | 797.7 ms | 837.5 ms | 131.5 MB/s | 7.36x | ✅ |
+| re (stdlib regex) `python 3.14.6` | 1245.7 ms | 1255.7 ms | 84.2 MB/s | 11.49x | ✅ |
+| ahocorapy (pure python) `1.8.0` | 4721.5 ms | 4813.3 ms | 22.2 MB/s | 43.53x | ✅ |
 
 ## Notes
 
