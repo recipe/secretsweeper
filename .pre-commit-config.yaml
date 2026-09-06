@@ -8,6 +8,6 @@ repos:
 
   - repo: https://github.com/astral-sh/ty-pre-commit
     # Keep in sync with the ty version in pyproject.toml.
-    rev: v0.0.56
+    rev: v0.0.78
     hooks:
       - id: ty

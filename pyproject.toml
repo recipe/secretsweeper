@@ -44,6 +44,16 @@ exclude = [
     "secretsweeper/*.dll",
 ]
 
+[tool.uv]
+# Rebuild the editable install (and so the Zig library) on `uv sync`/`uv run` whenever
+# these change; by default uv only watches pyproject.toml.
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "hatch_build.py" },
+    { file = "build.zig" },
+    { file = "src/**/*.zig" },
+]
+
 [[tool.ty.overrides]]
 include = ["benchmarks/**"]
 
@@ -64,7 +74,7 @@ dev = [
     "pre-commit (>=4.6.0,<5.0.0)",
     "pytest (>=9.0.3,<10.0.0)",
     "ruff (>=0.13.3,<0.14.0)",
-    "ty (==0.0.56)"
+    "ty (==0.0.78)"
 ]
 benchmark = [
     "acora (>=2.5,<3.0)",
