@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Python 3.15 wheel builds, including free-threaded CPython, and the Python 3.15
+  package classifier.
+
+### Changed
+
+- Upgraded cibuildwheel from 3.3.1 to 4.2.1 and explicitly listed Python wheel
+  build targets in CI.
+
 ## [0.1.0] - 2026-09-05
 
 ### Added
