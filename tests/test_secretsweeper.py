@@ -1,5 +1,7 @@
 import io
+import os
 import pathlib
+import subprocess
 import sys
 import sysconfig
 import threading
@@ -207,6 +209,33 @@ def test_stream_wrapper_gevent_safe() -> None:
     assert emitted + len(wrapper.consume_reminder()) == 4 * 100 * 33
 
 
+@pytest.mark.parametrize("shared", [False, True], ids=["independent", "shared"])
+def test_concurrent_masking_results(shared: bool) -> None:
+    # Check results as well as memory safety, both when threads share mutable
+    # automaton state and when independent automata can run in parallel.
+    wrapper = secretsweeper._core._StreamWrapper((b"secret",))
+    barrier = threading.Barrier(4, timeout=10)
+    errors = []
+
+    def worker() -> None:
+        local = wrapper if shared else secretsweeper._core._StreamWrapper((b"secret",))
+        try:
+            barrier.wait()
+            for _ in range(500):
+                assert local.masking_read(b"a secret!\n") == b"a ******!\n"
+        except Exception as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    # A deadlock must fail the timeout assertion without preventing pytest exit.
+    threads = [threading.Thread(target=worker, daemon=True) for _ in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=30)
+    assert not any(thread.is_alive() for thread in threads)
+    assert not errors
+
+
 def test_stream_wrapper_reminder_is_bounded() -> None:
     # A stream of b"a" against the pattern b"ab" keeps the automaton away from its
     # starting state; the wrapper must still emit data promptly and retain at most
@@ -218,12 +247,47 @@ def test_stream_wrapper_reminder_is_bounded() -> None:
     assert first + stream.readall() == b"a" * 1000
 
 
-def test_native_extension_is_used() -> None:
-    if sys.platform in ("win32", "cygwin"):
-        pytest.skip("the extension is not built on Windows")
-    if sysconfig.get_config_var("Py_GIL_DISABLED"):
-        pytest.skip("the extension is not supported on free-threaded CPython")
+def _require_native_extension() -> None:
+    if sys.platform == "cygwin" or sys.implementation.name != "cpython":
+        pytest.skip("the extension requires CPython outside Cygwin")
+    if sysconfig.get_config_var("Py_GIL_DISABLED") and sys.version_info < (3, 15):
+        pytest.skip("the extension requires Python 3.15+ on free-threaded CPython")
+    if (
+        sys.platform == "win32"
+        and secretsweeper._core._native is None
+        and os.environ.get("SECRET_SWEEPER_REQUIRE_NATIVE") != "1"
+    ):
+        pytest.skip("Windows source builds may use ctypes without Python import libraries")
     assert secretsweeper._core._native is not None
+
+
+def test_native_extension_is_used() -> None:
+    _require_native_extension()
+
+
+def test_native_import_preserves_disabled_gil() -> None:
+    if not sysconfig.get_config_var("Py_GIL_DISABLED"):
+        pytest.skip("requires a free-threaded interpreter")
+    _require_native_extension()
+    # A fresh process with no -X gil=0 override detects extensions which
+    # inadvertently enable the GIL during import. -I ignores PYTHON_GIL too.
+    subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-W",
+            "error",
+            "-c",
+            "import sys; assert not sys._is_gil_enabled(); "
+            "import secretsweeper; "
+            "assert secretsweeper._core._native is not None; "
+            "suffix = '.pyd' if sys.platform == 'win32' else '.abi3t.so'; "
+            "assert secretsweeper._core._native.__file__.endswith(suffix); "
+            "assert not sys._is_gil_enabled()",
+        ],
+        check=True,
+        timeout=30,
+    )
 
 
 def test_masking_read_ctypes_fallback_matches_native(
@@ -244,6 +308,35 @@ def test_masking_read_output_larger_than_input() -> None:
     wrapper = secretsweeper._core._StreamWrapper((b"multi\nline",))
     assert wrapper.masking_read(b"a multi") == b"a "
     assert wrapper.masking_read(b"x") == b"multix"
+
+
+@pytest.mark.parametrize("use_native", [False, True], ids=["ctypes", "native"])
+@pytest.mark.parametrize("limit", [0, 1, 2, 3, 15])
+def test_streaming_rebases_match_after_reminder_changes(
+    monkeypatch: pytest.MonkeyPatch, use_native: bool, limit: int
+) -> None:
+    if use_native:
+        if secretsweeper._core._native is None:
+            pytest.skip("native extension unavailable")
+    else:
+        monkeypatch.setattr(secretsweeper._core, "_native", None)
+
+    # The first three bytes form one match; the fourth is a separate match.
+    # Try every chunk boundary, with empty calls between chunks. In particular,
+    # [b"ba", b"a", b"a"] previously crashed at limit=0 as the reminder shrank.
+    data = b"baaa"
+    expected = b"*" * min(3, limit) + b"*" * min(1, limit)
+    for boundaries in range(1 << (len(data) - 1)):
+        wrapper = secretsweeper._core._StreamWrapper((b"a", b"baa"), limit=limit)
+        outputs = [wrapper.masking_read(b"")]
+        start = 0
+        for end in range(1, len(data) + 1):
+            if end == len(data) or boundaries & (1 << (end - 1)):
+                outputs.append(wrapper.masking_read(data[start:end]))
+                outputs.append(wrapper.masking_read(b""))
+                start = end
+        outputs.append(wrapper.consume_reminder())
+        assert b"".join(outputs) == expected
 
 
 def test_stream_wrapper_bytes_io() -> None:

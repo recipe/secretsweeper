@@ -122,14 +122,16 @@ jobs:
           "SECRET_SWEEPER_ZIG=$env:RUNNER_TEMP\zig\zig-x86_64-windows-0.16.0\zig.exe" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@c6c39891d69e0d1e7448c727f68b7b4d5e660e7f # v3.3.1
+        uses: pypa/cibuildwheel@e090b81e30c4d855ea63bf4b6e59204c09a101ae # v4.2.1
         env:
           # The hatch build hook passes this to zig as the target's minimum macOS
           # version; without it the dylib would require the runner's own OS version.
           CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=11.0
+          CIBW_BUILD: "cp311-* cp312-* cp313-* cp314-* cp314t-* cp315-* cp315t-*"
           CIBW_BUILD_FRONTEND: pip
           CIBW_BUILD_VERBOSITY: 0
-          CIBW_TEST_COMMAND: "pip install pytest && pytest {project}/tests"
+          CIBW_TEST_COMMAND: "pip install pytest hatchling==1.28.0 && pytest {project}/tests"
+          CIBW_TEST_ENVIRONMENT: SECRET_SWEEPER_REQUIRE_NATIVE=1
           CIBW_SKIP: "*-win32"
 
       - name: Upload artifacts

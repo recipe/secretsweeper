@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Python 3.15 wheel builds, including free-threaded CPython, and the Python 3.15
+  package classifier.
+- Native streaming fast path on free-threaded Python 3.15+ using the `abi3t`
+  stable ABI on Linux, macOS, and Windows (pip 26.1+ for wheel installation).
+  Python 3.14t retains the ctypes fallback.
+- Native streaming fast path on Windows for regular CPython builds.
+
+### Changed
+
+- Upgraded cibuildwheel from 3.3.1 to 4.2.1 and explicitly listed Python wheel
+  build targets in CI.
+
+### Fixed
+
+- Invalid streaming match positions when the buffered remainder changes length,
+  which could cause crashes or `MemoryError` on small inputs.
+
 ## [0.1.0] - 2026-09-05
 
 ### Added
