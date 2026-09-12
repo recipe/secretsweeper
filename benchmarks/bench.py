@@ -25,11 +25,9 @@ import importlib.metadata
 import json
 import pathlib
 import pickle
+import runpy
 import sys
 import time
-
-REPO_ROOT = pathlib.Path(__file__).parent.parent
-sys.path.insert(0, str(REPO_ROOT))
 
 DATA_DIR = pathlib.Path(__file__).parent / "data"
 LIMIT = 15  # secretsweeper.MAX_NUMBER_OF_STARS
@@ -245,9 +243,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.generate or not (DATA_DIR / "corpus.bin").exists():
-        import gen_corpus
-
-        gen_corpus.main()
+        runpy.run_path(str(pathlib.Path(__file__).with_name("gen_corpus.py")), run_name="__main__")
 
     data = run_benchmark(args.rounds)
 

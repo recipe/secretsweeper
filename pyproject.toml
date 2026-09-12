@@ -43,6 +43,7 @@ exclude = [
     "secretsweeper/*.so",
     "secretsweeper/*.dylib",
     "secretsweeper/*.dll",
+    "secretsweeper/*.pyd",
 ]
 
 [tool.uv]
