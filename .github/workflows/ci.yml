@@ -130,7 +130,8 @@ jobs:
           CIBW_BUILD: "cp311-* cp312-* cp313-* cp314-* cp314t-* cp315-* cp315t-*"
           CIBW_BUILD_FRONTEND: pip
           CIBW_BUILD_VERBOSITY: 0
-          CIBW_TEST_COMMAND: "pip install pytest && pytest {project}/tests"
+          CIBW_TEST_COMMAND: "pip install pytest hatchling==1.28.0 && pytest {project}/tests"
+          CIBW_TEST_ENVIRONMENT: SECRET_SWEEPER_REQUIRE_NATIVE=1
           CIBW_SKIP: "*-win32"
 
       - name: Upload artifacts

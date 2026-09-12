@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Python 3.15 wheel builds, including free-threaded CPython, and the Python 3.15
   package classifier.
 - Native streaming fast path on free-threaded Python 3.15+ using the `abi3t`
-  stable ABI on Linux, macOS, and Windows. Python 3.14t retains the ctypes fallback.
+  stable ABI on Linux, macOS, and Windows (pip 26.1+ for wheel installation).
+  Python 3.14t retains the ctypes fallback.
 - Native streaming fast path on Windows for regular CPython builds.
 
 ### Changed

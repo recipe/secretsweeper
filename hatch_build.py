@@ -30,26 +30,28 @@ def uses_abi3t() -> bool:
 
 
 def extension_names() -> tuple[str, ...]:
-    if sys.platform == "cygwin":
+    if sys.platform == "cygwin" or sys.implementation.name != "cpython":
         return ()
     if sysconfig.get_config_var("Py_GIL_DISABLED") and not uses_abi3t():
         return ()
     if sys.platform == "win32":
-        return ("_native.pyd",)
+        return ("_native.pyd",) if windows_import_library() is not None else ()
     if uses_abi3t():
         return ("_native.abi3t.so",)
     return ("_native.abi3.so",)
 
 
 def windows_import_library() -> Path | None:
-    if sys.platform != "win32" or not extension_names():
+    if sys.platform != "win32" or sys.implementation.name != "cpython":
+        return None
+    if sysconfig.get_config_var("Py_GIL_DISABLED") and not uses_abi3t():
         return None
     name = "python3t.lib" if uses_abi3t() else "python3.lib"
     for prefix in (sys.base_prefix, sys.base_exec_prefix, sys.prefix):
         path = Path(prefix) / "libs" / name
         if path.is_file():
             return path
-    raise RuntimeError(f"{name} is required to build the native extension; install Python development libraries")
+    return None
 
 
 def zig_command() -> list[str]:
@@ -118,6 +120,7 @@ class ZigBuildHook(BuildHookInterface):
         windows = windows_target()
         target = windows or macos_target()
         import_library = windows_import_library()
+        extensions = extension_names()
         try:
             target_options = [f"-Dtarget={target}"] if target else []
             if uses_abi3t():
@@ -175,28 +178,19 @@ class ZigBuildHook(BuildHookInterface):
                 )
         found_library = False
         for out_dir in ("lib", "bin"):
-            for name in library_names() + extension_names():
+            for name in library_names() + extensions:
                 artifact = Path(self.root) / "zig-out" / out_dir / name
                 if artifact.exists():
                     build_data["force_include"][str(artifact)] = f"secretsweeper/{name}"
-                    build_data["pure_python"] = False
-                    build_data["infer_tag"] = True
                     found_library = found_library or name in library_names()
         if not found_library:
             raise RuntimeError("zig build did not produce a shared library in zig-out")
-        for name in extension_names():
+        for name in extensions:
             if not Path(self.root, "zig-out", "lib", name).is_file():
                 raise RuntimeError(f"zig build did not produce the native extension {name}")
-        if uses_abi3t() and version != "editable":
-            from packaging.tags import sys_tags
-
-            # Like Hatchling's inferred platform tag, leave Linux repair to
-            # auditwheel; never claim manylinux/musllinux compatibility here.
-            platform_tag = next(
-                tag.platform for tag in sys_tags() if not tag.platform.startswith(("manylinux", "musllinux"))
-            )
-            if sys.platform == "darwin":
-                from hatchling.builders.macos import process_macos_plat_tag
-
-                platform_tag = process_macos_plat_tag(platform_tag, compat=self.build_config.macos_max_compat)
+        build_data["pure_python"] = False
+        if extensions and uses_abi3t() and version != "editable":
+            platform_tag = self.build_config.builder.get_best_matching_tag().rsplit("-", 1)[1]
             build_data["tag"] = f"cp315-abi3t-{platform_tag}"
+        else:
+            build_data["infer_tag"] = True

@@ -32,21 +32,6 @@ uv run --group benchmark python benchmarks/report.py
   OS/Python/Zig versions the run used.
 - `data/` - generated corpus, patterns, and results.
 
-## Native streaming calls
-
-`bench_streaming.py` compares the native streaming fast path against the ctypes
-fallback within the same installed wheel. It checks output equality, alternates
-measurement order, and reports the median call cost for 32, 128, and 1024-byte
-chunks. Run it in the environment where the wheel is installed:
-
-```bash
-python -I /path/to/secretsweeper/benchmarks/bench_streaming.py
-```
-
-For Python 3.15t, check that the output names `_native.abi3t.so` and reports
-`GIL enabled: False`. These measurements cover streaming-call overhead, not
-end-to-end application throughput or parallel scaling.
-
 ## Why re-run this instead of trusting old numbers
 
 Numbers in `RESULTS.md` are only valid for the machine and versions listed at

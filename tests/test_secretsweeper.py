@@ -1,4 +1,5 @@
 import io
+import os
 import pathlib
 import subprocess
 import sys
@@ -246,19 +247,28 @@ def test_stream_wrapper_reminder_is_bounded() -> None:
     assert first + stream.readall() == b"a" * 1000
 
 
-def test_native_extension_is_used() -> None:
-    if sys.platform == "cygwin":
-        pytest.skip("the extension is not built on Cygwin")
+def _require_native_extension() -> None:
+    if sys.platform == "cygwin" or sys.implementation.name != "cpython":
+        pytest.skip("the extension requires CPython outside Cygwin")
     if sysconfig.get_config_var("Py_GIL_DISABLED") and sys.version_info < (3, 15):
         pytest.skip("the extension requires Python 3.15+ on free-threaded CPython")
+    if (
+        sys.platform == "win32"
+        and secretsweeper._core._native is None
+        and os.environ.get("SECRET_SWEEPER_REQUIRE_NATIVE") != "1"
+    ):
+        pytest.skip("Windows source builds may use ctypes without Python import libraries")
     assert secretsweeper._core._native is not None
 
 
+def test_native_extension_is_used() -> None:
+    _require_native_extension()
+
+
 def test_native_import_preserves_disabled_gil() -> None:
-    if sys.platform == "cygwin" or sys.version_info < (3, 15):
-        pytest.skip("abi3t requires Python 3.15+ outside Cygwin")
     if not sysconfig.get_config_var("Py_GIL_DISABLED"):
         pytest.skip("requires a free-threaded interpreter")
+    _require_native_extension()
     # A fresh process with no -X gil=0 override detects extensions which
     # inadvertently enable the GIL during import. -I ignores PYTHON_GIL too.
     subprocess.run(
