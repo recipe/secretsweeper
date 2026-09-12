@@ -150,7 +150,8 @@ pub const Aho = struct {
     /// As this automaton always detects the leftmost-longest pattern first we don't need
     /// to take into consideration all possible overlap cases.
     last_occur: struct {
-        /// The position of the last character of the pattern in the input.
+        /// The position of the last character of the pattern relative to the
+        /// current input chunk, independent of the masked reminder's length.
         /// It can be negative for the position in the previous line of the streaming mode.
         /// A value of -1 means that no occurrences of any pattern have been found yet.
         pos: isize = -1,
@@ -446,11 +447,11 @@ pub const Aho = struct {
             }
             if (match_len == 0) continue;
             // This is the difference between the last character positions of the two patterns.
-            const num = self.last_occur.overlapReminder(pos, match_len);
+            const num = self.last_occur.overlapReminder(local_pos, match_len);
             self.last_occur.cum_len = if (num == MAX_INT) match_len else self.last_occur.cum_len + num;
             // Replace the last found pattern position and length.
             defer {
-                self.last_occur.pos = @intCast(pos);
+                self.last_occur.pos = @intCast(local_pos);
                 self.last_occur.len = match_len;
             }
             // Difference between the pattern length and max number of stars.
@@ -773,4 +774,26 @@ test "Aho reminder is bounded by the longest pattern prefix" {
     defer allocator.free(rest);
     try testing.expectEqualStrings("**c", rest);
     try testing.expectEqualStrings("", ac.reminder orelse "");
+}
+
+test "streaming rebases the last match when the reminder shrinks" {
+    for ([_]bool{ false, true }) |dfa| {
+        var ac = try Aho.init(testing.allocator);
+        defer ac.deinit();
+        _ = try ac.insert("a");
+        _ = try ac.insert("baa");
+        if (dfa) {
+            try testing.expect(try ac.buildDfa());
+        } else {
+            try ac.build();
+        }
+        for ([_][]const u8{ "ba", "", "a", "", "a" }) |chunk| {
+            const masked = try ac.mask(.{ .text = chunk, .max_stars = 0, .is_streaming = true });
+            defer testing.allocator.free(masked);
+            try testing.expectEqualStrings("", masked);
+            // A previous match must be behind the next chunk's first byte.
+            try testing.expect(ac.last_occur.pos < 0);
+        }
+        try testing.expectEqualStrings("", ac.reminder orelse "");
+    }
 }

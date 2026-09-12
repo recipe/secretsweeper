@@ -300,6 +300,35 @@ def test_masking_read_output_larger_than_input() -> None:
     assert wrapper.masking_read(b"x") == b"multix"
 
 
+@pytest.mark.parametrize("use_native", [False, True], ids=["ctypes", "native"])
+@pytest.mark.parametrize("limit", [0, 1, 2, 3, 15])
+def test_streaming_rebases_match_after_reminder_changes(
+    monkeypatch: pytest.MonkeyPatch, use_native: bool, limit: int
+) -> None:
+    if use_native:
+        if secretsweeper._core._native is None:
+            pytest.skip("native extension unavailable")
+    else:
+        monkeypatch.setattr(secretsweeper._core, "_native", None)
+
+    # The first three bytes form one match; the fourth is a separate match.
+    # Try every chunk boundary, with empty calls between chunks. In particular,
+    # [b"ba", b"a", b"a"] previously crashed at limit=0 as the reminder shrank.
+    data = b"baaa"
+    expected = b"*" * min(3, limit) + b"*" * min(1, limit)
+    for boundaries in range(1 << (len(data) - 1)):
+        wrapper = secretsweeper._core._StreamWrapper((b"a", b"baa"), limit=limit)
+        outputs = [wrapper.masking_read(b"")]
+        start = 0
+        for end in range(1, len(data) + 1):
+            if end == len(data) or boundaries & (1 << (end - 1)):
+                outputs.append(wrapper.masking_read(data[start:end]))
+                outputs.append(wrapper.masking_read(b""))
+                start = end
+        outputs.append(wrapper.consume_reminder())
+        assert b"".join(outputs) == expected
+
+
 def test_stream_wrapper_bytes_io() -> None:
     s = io.BytesIO(initial_bytes=b"funny")
     stream = secretsweeper.StreamWrapper(s, (b"fun",), limit=0)
