@@ -29,6 +29,10 @@ tokens, credentials – from byte literals, files, or any file-like objects (`io
 pip install secretsweeper 
 ```
 
+Free-threaded Python 3.15+ wheels use `abi3t` and require pip 26.1 or newer
+(or a recent uv). Upgrade pip with `python -m pip install --upgrade pip` if an
+older installer attempts a source build.
+
 ## Examples
 
 ✨ To mask secrets from the `bytes` literal:

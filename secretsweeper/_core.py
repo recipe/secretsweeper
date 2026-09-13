@@ -9,14 +9,13 @@ import sysconfig
 import threading
 import typing
 
-if sysconfig.get_config_var("Py_GIL_DISABLED"):
-    # Free-threaded CPython does not support the stable ABI: its object header layout
-    # differs from the one the extension declares, and importing it segfaults.
+if sysconfig.get_config_var("Py_GIL_DISABLED") and sys.version_info < (3, 15):
+    # Stable ABI for free-threading (abi3t) starts with Python 3.15.
     _native = None
 else:
     try:
         from secretsweeper import _native
-    except ImportError:  # platforms where the extension is not built (e.g. Windows)
+    except ImportError:  # installations where the extension is unavailable
         _native = None
 
 MAX_NUMBER_OF_STARS = 15

@@ -13,9 +13,9 @@
 //! the limited API since 3.10; the package requires >=3.11). The needed C API
 //! functions and struct layouts are declared manually, so no Python headers
 //! are required at build time; the symbols resolve against the hosting
-//! interpreter when the module is imported. Free-threaded CPython has no
-//! stable ABI and a different object header layout, so the module is neither
-//! shipped in free-threaded wheels nor imported by `_core` there.
+//! interpreter when the module is imported. Python 3.15+ free-threaded builds
+//! use abi3t and the layout-independent export hook in python_abi3t.zig.
+//! Older free-threaded builds use the ctypes fallback.
 //!
 //! The automaton handle is the pointer returned by `ss_new` in the ctypes
 //! shared library. Both artifacts are compiled from the same sources in one
@@ -80,7 +80,9 @@ extern var PyExc_MemoryError: *PyObject;
 /// `masking_read(handle: int, data: bytes, limit: int) -> bytes`
 ///
 /// Streaming mask over the chunk, mirroring `_StreamWrapper.masking_read`.
-/// The GIL is held for the whole call, which serializes automaton mutation.
+/// The caller must hold the owning _StreamWrapper's lock for the entire call.
+/// The raw handle is private; direct concurrent calls with the same handle are
+/// unsupported. No Python object layouts are accessed by this function.
 fn maskingRead(
     self: ?*PyObject,
     args: ?[*]const ?*PyObject,
@@ -140,6 +142,23 @@ var module_def = PyModuleDef{
     .m_methods = &methods,
 };
 
-export fn PyInit__native() ?*PyObject {
+fn initLegacy() callconv(.c) ?*PyObject {
     return PyModule_Create2(&module_def, PYTHON_ABI_VERSION);
+}
+
+const abi3t = @import("python_abi3t.zig");
+const module_slots = abi3t.moduleSlots(&methods);
+
+fn exportModule() callconv(.c) [*]const abi3t.PySlot {
+    return &module_slots;
+}
+
+comptime {
+    // Export only the selected initialization hook: abi3t must never instantiate
+    // the legacy PyModuleDef, whose embedded PyObject header assumes the GIL ABI.
+    if (@import("python_options").abi3t) {
+        @export(&exportModule, .{ .name = "PyModExport__native" });
+    } else {
+        @export(&initLegacy, .{ .name = "PyInit__native" });
+    }
 }
