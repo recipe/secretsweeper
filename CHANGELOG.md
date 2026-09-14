@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Invalid streaming match positions when the buffered remainder changes length,
+  which could cause crashes or `MemoryError` on small inputs.
+
 ## [0.1.0] - 2026-09-05
 
 ### Added
