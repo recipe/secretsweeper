@@ -21,6 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Upgraded cibuildwheel from 3.3.1 to 4.2.1 and explicitly listed Python wheel
   build targets in CI.
 
+## [0.1.1] - 2026-09-14
+
+### Fixed
+
+- Invalid streaming match positions when the buffered remainder changes length,
+  which could cause crashes or `MemoryError` on small inputs.
+
 ## [0.1.0] - 2026-09-05
 
 ### Added
@@ -141,7 +148,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enables use with in-memory buffers, file-like objects, and streaming
   pipelines.
 
-[unreleased]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.8...HEAD
+[unreleased]: https://github.com/recipe/secretsweeper/compare/0.1.1...HEAD
+[0.1.1]: https://github.com/recipe/secretsweeper/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.8...0.1.0
 [0.0.1-alpha.8]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.7...0.0.1-alpha.8
 [0.0.1-alpha.7]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.6...0.0.1-alpha.7

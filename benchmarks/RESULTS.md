@@ -18,7 +18,7 @@ uv run --group benchmark python benchmarks/report.py
 | OS | Darwin 25.6.0 (arm64) |
 | Python | CPython 3.14.6 |
 | Zig | 0.16.0 |
-| secretsweeper | 0.1.0 |
+| secretsweeper | 0.1.1 |
 
 ## Corpus
 
@@ -32,18 +32,18 @@ Each engine measured as a single total wall-clock call (build/compile + search +
 xychart-beta
     title "Masking throughput - min MB/s across interleaved rounds (higher is better)"
     x-axis ["secretsweeper", "ahocorasick_rs", "acora", "pyahocorasick", "re", "ahocorapy"]
-    y-axis "MB/s" 0 --> 1064
-    bar [966.9, 604.8, 182.0, 131.5, 84.2, 22.2]
+    y-axis "MB/s" 0 --> 1028
+    bar [934.8, 593.3, 176.3, 139.6, 82.0, 21.6]
 ```
 
 | Engine | min | avg | min throughput | vs. fastest | correct |
 |---|---:|---:|---:|---:|:---:|
-| secretsweeper `0.1.0` | 108.5 ms | 123.1 ms | 966.9 MB/s | 1.00x | ✅ |
-| ahocorasick_rs `1.0.3` | 173.4 ms | 175.0 ms | 604.8 MB/s | 1.60x | ✅ |
-| acora `2.5` | 576.3 ms | 585.4 ms | 182.0 MB/s | 5.31x | ✅ |
-| pyahocorasick `2.3.1` | 797.7 ms | 837.5 ms | 131.5 MB/s | 7.36x | ✅ |
-| re (stdlib regex) `python 3.14.6` | 1245.7 ms | 1255.7 ms | 84.2 MB/s | 11.49x | ✅ |
-| ahocorapy (pure python) `1.8.0` | 4721.5 ms | 4813.3 ms | 22.2 MB/s | 43.53x | ✅ |
+| secretsweeper `0.1.1` | 112.2 ms | 115.9 ms | 934.8 MB/s | 1.00x | ✅ |
+| ahocorasick_rs `1.0.3` | 176.8 ms | 180.1 ms | 593.3 MB/s | 1.58x | ✅ |
+| acora `2.5` | 594.7 ms | 623.4 ms | 176.3 MB/s | 5.30x | ✅ |
+| pyahocorasick `2.3.1` | 751.3 ms | 821.8 ms | 139.6 MB/s | 6.70x | ✅ |
+| re (stdlib regex) `python 3.14.6` | 1279.4 ms | 1290.7 ms | 82.0 MB/s | 11.41x | ✅ |
+| ahocorapy (pure python) `1.8.0` | 4859.8 ms | 4880.0 ms | 21.6 MB/s | 43.32x | ✅ |
 
 ## Notes
 
