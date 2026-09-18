@@ -96,19 +96,16 @@ uv build
 Release wheels are produced by cibuildwheel in CI; see the `build` job in
 `.github/workflows/ci.yml` for the per-platform flags.
 
-For free-threaded Python 3.15+, build with `uv build --wheel --python 3.15t`.
-These wheels use the `abi3t` native extension; Python 3.14t uses the ctypes
-fallback. On Windows, the native extension needs `python3.lib` (regular) or
-`python3t.lib` (free-threaded 3.15+) in an interpreter's `libs` directory;
-source builds use ctypes when the import library is unavailable.
+The build hook picks the native extension variant from the interpreter running
+the build, so no extra flags are needed. To produce a free-threaded Python 3.15+
+wheel (`cp315-abi3t`), run the build under such an interpreter, for example
+`uv build --wheel --python 3.15t` or from a venv created with `--python 3.15t`.
+Free-threaded 3.14 has no stable ABI, so those wheels ship only the ctypes path.
 
-Install the wheel and pytest in a clean environment, then run:
-
-```bash
-python -I -m pytest /absolute/path/to/tests --import-mode=importlib
-```
-
-Leave `PYTHON_GIL` unset so the tests can detect accidental GIL enablement.
+On Windows, the extension links against the stable ABI import library
+(`python3.lib`, or `python3t.lib` for free-threaded 3.15+) from the
+interpreter's `libs` directory. If it is missing, the hook silently skips the
+extension and the wheel ships only the ctypes path.
 
 ## Releasing
 
