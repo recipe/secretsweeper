@@ -290,16 +290,57 @@ def test_native_import_preserves_disabled_gil() -> None:
     )
 
 
-def test_masking_read_ctypes_fallback_matches_native(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    chunks = (b"a multi", b"x", b"say uuid-123 loud\n", b"", b"multi\nline tail")
-    outputs = []
-    for native in (secretsweeper._core._native, None):
-        monkeypatch.setattr(secretsweeper._core, "_native", native)
-        wrapper = secretsweeper._core._StreamWrapper((b"multi\nline", b"uuid-123"))
-        outputs.append([wrapper.masking_read(c) for c in chunks] + [wrapper.consume_reminder()])
-    assert outputs[0] == outputs[1]
+def test_single_backend_selected() -> None:
+    # A wheel ships one binary, so _core binds to exactly one backend module.
+    backend = secretsweeper._core._backend
+    if secretsweeper._core._native is not None:
+        assert backend is secretsweeper._core._native
+    else:
+        assert backend.__name__ == "secretsweeper._ctypes_backend"
+
+
+def test_native_destroyed_automaton_is_rejected() -> None:
+    _require_native_extension()
+    native = secretsweeper._core._native
+    assert native is not None
+    automaton = native.new((b"secret",), True)
+    assert native.mask(automaton, b"a secret", 15, False) == b"a ******"
+    native.destroy(automaton)
+    for call in (
+        lambda: native.mask(automaton, b"a secret", 15, False),
+        lambda: native.get_reminder(automaton),
+        lambda: native.reset_reminder(automaton),
+        lambda: native.destroy(automaton),
+    ):
+        with pytest.raises(ValueError):
+            call()
+
+
+def test_pattern_type_error_wording() -> None:
+    # Both backends report a non-bytes pattern the same way.
+    with pytest.raises(TypeError) as ex:
+        secretsweeper.mask(b"", ("str",))  # type: ignore
+    assert "expected bytes, found <class 'str'>" in str(ex.value)
+
+
+@pytest.mark.parametrize("kind", ["bytes", "bytearray", "memoryview", "strided_memoryview"])
+def test_mask_large_input_buffers(kind: str) -> None:
+    # Beyond the size at which the native backend releases the GIL, on every
+    # accepted input type; the strided view exercises the contiguity fallback.
+    block = b"x" * 1000 + b"secret" + b"y" * 1000
+    data = block * 100
+    expected = (b"x" * 1000 + b"******" + b"y" * 1000) * 100
+    if kind == "bytes":
+        input = data
+    elif kind == "bytearray":
+        input = bytearray(data)
+    elif kind == "memoryview":
+        input = memoryview(data)
+    else:
+        input = memoryview(data + data)[::2]
+        assert not input.c_contiguous
+        expected = secretsweeper.mask(bytes(input), (b"secret",))
+    assert secretsweeper.mask(input, (b"secret",)) == expected
 
 
 def test_masking_read_output_larger_than_input() -> None:
@@ -310,17 +351,8 @@ def test_masking_read_output_larger_than_input() -> None:
     assert wrapper.masking_read(b"x") == b"multix"
 
 
-@pytest.mark.parametrize("use_native", [False, True], ids=["ctypes", "native"])
 @pytest.mark.parametrize("limit", [0, 1, 2, 3, 15])
-def test_streaming_rebases_match_after_reminder_changes(
-    monkeypatch: pytest.MonkeyPatch, use_native: bool, limit: int
-) -> None:
-    if use_native:
-        if secretsweeper._core._native is None:
-            pytest.skip("native extension unavailable")
-    else:
-        monkeypatch.setattr(secretsweeper._core, "_native", None)
-
+def test_streaming_rebases_match_after_reminder_changes(limit: int) -> None:
     # The first three bytes form one match; the fourth is a separate match.
     # Try every chunk boundary, with empty calls between chunks. In particular,
     # [b"ba", b"a", b"a"] previously crashed at limit=0 as the reminder shrank.

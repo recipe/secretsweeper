@@ -1,77 +1,41 @@
-"""ctypes bindings for the Aho-Corasick automaton shared library written in Zig."""
+"""Public API over the automaton backend.
 
-import ctypes
+- `secretsweeper._native`: the CPython extension module (src/python.zig) using the
+  stable ABI - `abi3` on regular CPython 3.11+, `abi3t` on free-threaded CPython
+  3.15+. Calls cost about as much as a builtin function.
+- `secretsweeper._ctypes_backend`: the C-ABI shared library (src/export.zig) driven
+  through the standard library `ctypes` module. Used where the extension cannot be
+  built: free-threaded CPython before 3.15, which has no stable ABI; non-CPython
+  interpreters; Windows source builds without the stable ABI import library.
+"""
+
 import io
 import os
-import pathlib
 import sys
 import sysconfig
 import threading
 import typing
 
 if sysconfig.get_config_var("Py_GIL_DISABLED") and sys.version_info < (3, 15):
-    # Stable ABI for free-threading (abi3t) starts with Python 3.15.
+    # No stable ABI before 3.15 on free-threaded CPython: never load a leftover
+    # abi3 extension, whose object layouts would not match the interpreter's.
     _native = None
 else:
     try:
         from secretsweeper import _native
-    except ImportError:  # installations where the extension is unavailable
+    except ImportError:  # wheels built without the extension
         _native = None
+
+if _native is not None:
+    _backend = _native
+else:
+    from secretsweeper import _ctypes_backend as _backend
 
 MAX_NUMBER_OF_STARS = 15
 
-_LIBRARY_NAMES = {
-    "win32": ("secretsweeper.dll",),
-    "cygwin": ("secretsweeper.dll",),
-    "darwin": ("libsecretsweeper.dylib",),
-}
-
-
-def _load_library() -> ctypes.CDLL:
-    # Every directory on the package's search path (see __init__.py), not just this one.
-    package_dirs = [pathlib.Path(p) for p in sys.modules[__name__.rpartition(".")[0]].__path__]
-    names = _LIBRARY_NAMES.get(sys.platform, ("libsecretsweeper.so",))
-    for package_dir in package_dirs:
-        for name in names:
-            path = package_dir / name
-            if path.exists():
-                return ctypes.CDLL(str(path))
-    raise ImportError(f"cannot find the secretsweeper shared library in {package_dirs}")
-
-
-_lib = _load_library()
-
-_lib.ss_new.argtypes = ()
-_lib.ss_new.restype = ctypes.c_void_p
-_lib.ss_destroy.argtypes = (ctypes.c_void_p,)
-_lib.ss_destroy.restype = None
-_lib.ss_insert.argtypes = (ctypes.c_void_p, ctypes.c_char_p, ctypes.c_size_t)
-_lib.ss_insert.restype = ctypes.c_int32
-_lib.ss_build.argtypes = (ctypes.c_void_p,)
-_lib.ss_build.restype = ctypes.c_int32
-_lib.ss_build_fallback.argtypes = (ctypes.c_void_p,)
-_lib.ss_build_fallback.restype = ctypes.c_int32
-_lib.ss_mask.argtypes = (
-    ctypes.c_void_p,
-    ctypes.c_char_p,
-    ctypes.c_size_t,
-    ctypes.c_uint64,
-    ctypes.c_bool,
-    ctypes.POINTER(ctypes.c_void_p),
-    ctypes.POINTER(ctypes.c_size_t),
-)
-_lib.ss_mask.restype = ctypes.c_int32
-_lib.ss_free.argtypes = (ctypes.c_void_p, ctypes.c_size_t)
-_lib.ss_free.restype = None
-_lib.ss_get_reminder.argtypes = (ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t))
-_lib.ss_get_reminder.restype = ctypes.c_void_p
-_lib.ss_reset_reminder.argtypes = (ctypes.c_void_p,)
-_lib.ss_reset_reminder.restype = None
-
-
 _FORCE_NO_DFA_AUTOMATON_ENV = "SECRET_SWEEPER_NO_DFA_AUTOMATON"
 """
-Normally builds whichever representation `ss_build` picks (the DFA, unless
+Normally builds whichever representation the backend picks (the DFA, unless
 the pattern set exceeds its memory cap). Setting the
 `SECRET_SWEEPER_NO_DFA_AUTOMATON` environment variable to a truthy value
 (`1`/`true`, case-insensitive) forces the classic goto/fail-link build
@@ -92,50 +56,17 @@ def _is_env_flag_set(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in _TRUTHY_ENV_VALUES
 
 
-def _build_automaton(patterns: typing.Iterable[bytes]) -> int:
-    """Create an automaton, insert all patterns and build it. Returns the handle."""
-    automaton = _lib.ss_new()
-    if not automaton:
-        raise MemoryError("failed to create the automaton")
-    try:
-        for pattern in patterns:
-            if not isinstance(pattern, bytes):
-                raise TypeError(f"expected bytes, found {type(pattern)}")
-            if _lib.ss_insert(automaton, pattern, len(pattern)) != 0:
-                raise MemoryError("failed to insert a pattern")
-        build_fn = _lib.ss_build_fallback if _is_env_flag_set(_FORCE_NO_DFA_AUTOMATON_ENV) else _lib.ss_build
-        if build_fn(automaton) != 0:
-            raise MemoryError("failed to build the automaton")
-    except BaseException:
-        _lib.ss_destroy(automaton)
-        raise
-    return automaton
-
-
-def _mask(automaton: int, text: bytes, limit: int, *, is_streaming: bool) -> bytes:
-    """Mask all patterns in the text using the given automaton handle."""
-    if limit < 0:
-        raise ValueError("limit must be non-negative")
-    out_ptr = ctypes.c_void_p()
-    out_len = ctypes.c_size_t()
-    status = _lib.ss_mask(automaton, text, len(text), limit, is_streaming, ctypes.byref(out_ptr), ctypes.byref(out_len))
-    if status != 0:
-        raise MemoryError("failed to mask the input")
-    ptr = out_ptr.value
-    if not ptr:
-        return b""
-    try:
-        return ctypes.string_at(ptr, out_len.value)
-    finally:
-        _lib.ss_free(ptr, out_len.value)
+def _build_automaton(patterns: typing.Iterable[bytes]) -> typing.Any:
+    """Create an automaton, insert all patterns and build it. Returns the backend's handle."""
+    return _backend.new(patterns, not _is_env_flag_set(_FORCE_NO_DFA_AUTOMATON_ENV))
 
 
 class _StreamWrapper:
     """
-    An internal _StreamWrapper class that owns a persistent automaton handle.
+    An internal _StreamWrapper class that owns a persistent automaton.
 
-    The automaton state is mutated by the native code with the GIL released, so all
-    calls into it are serialized with a lock to keep concurrent use memory-safe.
+    The automaton state is mutated by the native code, so all calls into it are
+    serialized with a lock to keep concurrent use memory-safe.
 
     This is also gevent-safe: `threading.Lock` is resolved when the wrapper is created,
     honoring monkey-patching, and even an unpatched lock is only ever held around
@@ -153,11 +84,11 @@ class _StreamWrapper:
             raise ValueError("limit must be non-negative")
         self._limit = limit
         self._lock = threading.Lock()
-        self._automaton = _build_automaton(patterns)
+        self._automaton: typing.Any = _build_automaton(patterns)
 
-    def __del__(self, _destroy=_lib.ss_destroy):
-        if automaton := getattr(self, "_automaton", 0):
-            self._automaton = 0
+    def __del__(self, _destroy=_backend.destroy):
+        if (automaton := getattr(self, "_automaton", None)) is not None:
+            self._automaton = None
             _destroy(automaton)
 
     def _id(self) -> int:
@@ -172,9 +103,7 @@ class _StreamWrapper:
         :return: Returns the input string with masked patterns.
         """
         with self._lock:
-            if _native is not None:
-                return _native.masking_read(self._automaton, carry, self._limit)
-            return _mask(self._automaton, carry, self._limit, is_streaming=True)
+            return _backend.mask(self._automaton, carry, self._limit, True)
 
     def consume_reminder(self) -> bytes:
         """
@@ -182,23 +111,16 @@ class _StreamWrapper:
         """
         with self._lock:
             try:
-                return self._get_reminder()
+                return _backend.get_reminder(self._automaton)
             finally:
-                _lib.ss_reset_reminder(self._automaton)
+                _backend.reset_reminder(self._automaton)
 
     def get_reminder(self) -> bytes:
         """
         :return: Get the reminder or return empty bytes if it's empty.
         """
         with self._lock:
-            return self._get_reminder()
-
-    def _get_reminder(self) -> bytes:
-        out_len = ctypes.c_size_t()
-        ptr = _lib.ss_get_reminder(self._automaton, ctypes.byref(out_len))
-        if not ptr:
-            return b""
-        return ctypes.string_at(ptr, out_len.value)
+            return _backend.get_reminder(self._automaton)
 
 
 def mask(
@@ -219,8 +141,13 @@ def mask(
     if not isinstance(input, (bytes, bytearray, memoryview)):
         help_note = ". You can use the StreamWrapper class for such purposes." if isinstance(input, io.BytesIO) else ""
         raise TypeError(f"expected bytes, memoryview or bytearray, found {type(input)}{help_note}")
+    if limit < 0:
+        raise ValueError("limit must be non-negative")
+    if isinstance(input, memoryview) and not input.c_contiguous:
+        # The backends read the input as one contiguous buffer.
+        input = input.tobytes()
     automaton = _build_automaton(patterns)
     try:
-        return _mask(automaton, bytes(input), limit, is_streaming=False)
+        return _backend.mask(automaton, input, limit, False)
     finally:
-        _lib.ss_destroy(automaton)
+        _backend.destroy(automaton)

@@ -27,14 +27,15 @@ uv sync
 `uv sync` creates `.venv`, installs the `dev` dependency group (pytest, ruff, ty,
 pre-commit, ziglang) and installs secretsweeper itself in editable mode. The
 editable install runs the hatch build hook (`hatch_build.py`), which compiles the
-Zig library into `zig-out/lib/` and bundles the shared library and extension
-module into `.venv/.../site-packages/secretsweeper/`. The package finds them
-there even though the editable install imports the Python sources from the
-source tree.
+binary this interpreter uses (the `_native` extension module, or the ctypes
+shared library where the extension cannot be built) into `zig-out/` and bundles
+it into `.venv/.../site-packages/secretsweeper/`. The package finds it there
+even though the editable install imports the Python sources from the source
+tree.
 
 uv caches the build: deleting `.venv` or `zig-out/` and running `uv sync` again
 installs the cached wheel without recompiling, which is fine. Stale copies of
-`libsecretsweeper.*`/`_native.abi3.so` inside `secretsweeper/` (from older
+`libsecretsweeper.*`/`_native.*` inside `secretsweeper/` (from older
 workflows) would shadow the fresh build, so delete them if present.
 
 Optionally install the git hooks (ruff and ty run on every commit):
@@ -96,16 +97,26 @@ uv build
 Release wheels are produced by cibuildwheel in CI; see the `build` job in
 `.github/workflows/ci.yml` for the per-platform flags.
 
-The build hook picks the native extension variant from the interpreter running
-the build, so no extra flags are needed. To produce a free-threaded Python 3.15+
-wheel (`cp315-abi3t`), run the build under such an interpreter, for example
-`uv build --wheel --python 3.15t` or from a venv created with `--python 3.15t`.
-Free-threaded 3.14 has no stable ABI, so those wheels ship only the ctypes path.
+A wheel ships exactly one binary, and the build hook picks it from the
+interpreter running the build, so no extra flags are needed:
+
+- Regular CPython produces a `cp311-abi3` wheel with the `_native` extension
+  module; it installs on every supported Python version.
+- Free-threaded CPython 3.15+ produces a `cp315-abi3t` wheel with the `abi3t`
+  variant of the extension. Run the build under such an interpreter, for
+  example `uv build --wheel --python 3.15t`.
+- Free-threaded 3.14 has no stable ABI, and non-CPython interpreters cannot
+  load the extension: these produce per-interpreter wheels (`cp314t`, ...) with
+  the ctypes shared library instead. (3.13t is the same case, but cibuildwheel
+  4 no longer builds it, so it is served by the sdist.)
+
+A plain `zig build` compiles both binaries; the hook passes
+`-Dartifact=extension` or `-Dartifact=library` to get just one.
 
 On Windows, the extension links against the stable ABI import library
 (`python3.lib`, or `python3t.lib` for free-threaded 3.15+) from the
-interpreter's `libs` directory. If it is missing, the hook silently skips the
-extension and the wheel ships only the ctypes path.
+interpreter's `libs` directory. If it is missing, the hook silently falls back
+to the ctypes shared library and the wheel is tagged for that interpreter only.
 
 ## Releasing
 
