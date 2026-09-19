@@ -1,4 +1,4 @@
-"""Hatchling build hook: compiles the Zig shared library and bundles it into the wheel."""
+"""Hatchling build hook: compiles the Zig binary for this interpreter and bundles it into the wheel."""
 
 import os
 import platform
@@ -10,17 +10,53 @@ from pathlib import Path
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
-LIBRARY_NAMES = ("libsecretsweeper.so", "libsecretsweeper.dylib", "secretsweeper.dll")
-# CPython extension for the hot calls; the ctypes fallback applies where it is absent.
-# Not shipped on Windows (extensions must link python3.lib there) or in free-threaded
-# wheels (no stable ABI: the object header layout differs and importing it segfaults).
-EXTENSION_NAMES = ("_native.abi3.so",)
+
+def library_names() -> tuple[str, ...]:
+    if sys.platform in ("win32", "cygwin"):
+        return ("secretsweeper.dll",)
+    if sys.platform == "darwin":
+        return ("libsecretsweeper.dylib",)
+    return ("libsecretsweeper.so",)
+
+
+def uses_abi3t() -> bool:
+    return (
+        sys.platform != "cygwin" and sys.version_info >= (3, 15) and bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
+    )
 
 
 def extension_names() -> tuple[str, ...]:
-    if sysconfig.get_config_var("Py_GIL_DISABLED"):
+    if sys.platform == "cygwin" or sys.implementation.name != "cpython":
         return ()
-    return EXTENSION_NAMES
+    if sysconfig.get_config_var("Py_GIL_DISABLED") and not uses_abi3t():
+        return ()
+    if sys.platform == "win32":
+        return ("_native.pyd",) if windows_import_library() is not None else ()
+    if uses_abi3t():
+        return ("_native.abi3t.so",)
+    return ("_native.abi3.so",)
+
+
+def wheel_tag_prefix() -> str:
+    """Interpreter and ABI tags of an extension wheel. The abi3 floor is 3.11, the
+    package's `requires-python` and the version whose limited API gained the buffer
+    protocol; abi3t exists from 3.15 on. Installers only offer the abi3 tags to
+    GIL builds and the abi3t tags to free-threaded builds, so neither wheel can
+    reach an interpreter it does not support."""
+    return "cp315-abi3t" if uses_abi3t() else "cp311-abi3"
+
+
+def windows_import_library() -> Path | None:
+    if sys.platform != "win32" or sys.implementation.name != "cpython":
+        return None
+    if sysconfig.get_config_var("Py_GIL_DISABLED") and not uses_abi3t():
+        return None
+    name = "python3t.lib" if uses_abi3t() else "python3.lib"
+    for prefix in (sys.base_prefix, sys.base_exec_prefix, sys.prefix):
+        path = Path(prefix) / "libs" / name
+        if path.is_file():
+            return path
+    return None
 
 
 def zig_command() -> list[str]:
@@ -88,8 +124,17 @@ class ZigBuildHook(BuildHookInterface):
         # separate from `target` because the fallback below applies only to Windows.
         windows = windows_target()
         target = windows or macos_target()
+        import_library = windows_import_library()
+        extensions = extension_names()
+        # The wheel ships either the extension module or the ctypes library, never both.
+        artifacts = extensions or library_names()
         try:
             target_options = [f"-Dtarget={target}"] if target else []
+            target_options.append(f"-Dartifact={'extension' if extensions else 'library'}")
+            if uses_abi3t():
+                target_options.append("-Dpython-abi3t=true")
+            if import_library is not None:
+                target_options.append(f"-Dpython-import-lib={import_library}")
             run_zig(["build", "-Doptimize=ReleaseFast", *target_options, *linux_cpu()], cwd=self.root)
         except RuntimeError:
             # On any host other than Windows a build failure is fatal: the `build-lib`
@@ -100,30 +145,59 @@ class ZigBuildHook(BuildHookInterface):
             # `zig build` crashes silently on Windows ARM64 (zig support for aarch64-windows
             # is partial: ziglang/zig#16665). Unlike `zig build`, compiling the library
             # directly involves neither building nor running a build-runner executable.
-            Path(self.root, "zig-out", "bin").mkdir(parents=True, exist_ok=True)
-            run_zig(
-                [
-                    "build-lib",
-                    "src/export.zig",
-                    "--name",
-                    "secretsweeper",
-                    "-dynamic",
-                    "-OReleaseFast",
-                    "-lc",
-                    "-target",
-                    windows,
-                    "-femit-bin=zig-out/bin/secretsweeper.dll",
-                ],
-                cwd=self.root,
-            )
-        found_library = False
-        for out_dir in ("lib", "bin"):
-            for name in LIBRARY_NAMES + extension_names():
+            if extensions:
+                assert import_library is not None  # extension_names() requires it on Windows
+                options = Path(self.root, "zig-out", "python_options.zig")
+                options.parent.mkdir(parents=True, exist_ok=True)
+                options.write_text(f"pub const abi3t = {str(uses_abi3t()).lower()};\n")
+                Path(self.root, "zig-out", "lib").mkdir(parents=True, exist_ok=True)
+                run_zig(
+                    [
+                        "build-lib",
+                        "--name",
+                        "_native",
+                        "-dynamic",
+                        "-OReleaseFast",
+                        "-lc",
+                        "-target",
+                        windows,
+                        str(import_library),
+                        "--dep",
+                        "python_options",
+                        "-Mroot=src/python.zig",
+                        f"-Mpython_options={options}",
+                        "-femit-bin=zig-out/lib/_native.pyd",
+                    ],
+                    cwd=self.root,
+                )
+            else:
+                Path(self.root, "zig-out", "bin").mkdir(parents=True, exist_ok=True)
+                run_zig(
+                    [
+                        "build-lib",
+                        "src/export.zig",
+                        "--name",
+                        "secretsweeper",
+                        "-dynamic",
+                        "-OReleaseFast",
+                        "-lc",
+                        "-target",
+                        windows,
+                        "-femit-bin=zig-out/bin/secretsweeper.dll",
+                    ],
+                    cwd=self.root,
+                )
+        for name in artifacts:
+            for out_dir in ("lib", "bin"):
                 artifact = Path(self.root) / "zig-out" / out_dir / name
                 if artifact.exists():
                     build_data["force_include"][str(artifact)] = f"secretsweeper/{name}"
-                    build_data["pure_python"] = False
-                    build_data["infer_tag"] = True
-                    found_library = found_library or name in LIBRARY_NAMES
-        if not found_library:
-            raise RuntimeError("zig build did not produce a shared library in zig-out")
+                    break
+            else:
+                raise RuntimeError(f"zig build did not produce {name} in zig-out")
+        build_data["pure_python"] = False
+        if extensions and version != "editable":
+            platform_tag = self.build_config.builder.get_best_matching_tag().rsplit("-", 1)[1]
+            build_data["tag"] = f"{wheel_tag_prefix()}-{platform_tag}"
+        else:
+            build_data["infer_tag"] = True

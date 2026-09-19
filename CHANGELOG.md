@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Python 3.15 wheel builds, including free-threaded CPython, and the Python 3.15
+  package classifier.
+- `mask()` accepts any C-contiguous buffer without copying it first.
+
+### Changed
+
+- The `_native` extension module now implements the whole API (automaton
+  construction, one-shot and streaming masking, the streaming reminder) through
+  the CPython stable ABI, and every wheel ships a single binary. Regular CPython
+  installs one `cp311-abi3` wheel per platform, valid for every supported Python
+  version; free-threaded Python 3.15+ installs a `cp315-abi3t` wheel (pip 26.1+).
+  Free-threaded 3.14, which has no stable ABI, non-CPython interpreters
+  and Windows source builds without the stable ABI import library get the same
+  core as a shared library driven through ctypes, with no extension module.
+- `mask()` releases the GIL only for inputs of 64 KiB or more (ctypes released
+  it on every call); streaming reads never release it.
+- Upgraded cibuildwheel from 3.3.1 to 4.2.1 and explicitly listed Python wheel
+  build targets in CI.
+
 ## [0.1.1] - 2026-09-14
 
 ### Fixed

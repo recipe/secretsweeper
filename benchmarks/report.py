@@ -273,8 +273,8 @@ def render_markdown(data: dict, sysinfo: dict) -> str:
         "(`pip install -e .`) can leave a stale compiled library sitting in the "
         "`secretsweeper/` source directory that shadows a freshly rebuilt one in "
         "site-packages. After changing anything under `src/`, run `uv pip install -e . "
-        "--reinstall` and, if in doubt, copy `zig-out/lib/{libsecretsweeper.dylib or "
-        ".so,_native.abi3.so}` into `secretsweeper/` directly before benchmarking - "
+        "--reinstall` and, if in doubt, copy `zig-out/lib/_native.abi3.so` (or the "
+        "`libsecretsweeper.*` ctypes library) into `secretsweeper/` directly before benchmarking - "
         "otherwise you may be measuring an old build without realizing it."
     )
     a(
