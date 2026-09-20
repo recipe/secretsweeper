@@ -100,10 +100,12 @@ def mask(automaton: int, data: bytes | bytearray | memoryview, limit: int, is_st
 
 
 def get_reminder(automaton: int) -> bytes:
-    """The streaming-mode reminder, empty if there is none."""
+    """The output still owed for the stream: the reminder with its pending matches masked."""
     out_len = ctypes.c_size_t()
     ptr = _lib.ss_get_reminder(automaton, ctypes.byref(out_len))
     if not ptr:
+        if out_len.value == ctypes.c_size_t(-1).value:
+            raise MemoryError("failed to render the reminder")
         return b""
     return ctypes.string_at(ptr, out_len.value)
 

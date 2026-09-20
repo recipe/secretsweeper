@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `mask()` missed a pattern that ends while the automaton is inside a longer
+  pattern's trie path.
+- Overlapping matches are tracked as regions, so a longer match that completes
+  after a shorter one it contains (`masher` after `ash` in `smasher`) masks the
+  whole run, also when the run spans streaming chunks.
+
 ### Added
 
 - Python 3.15 wheel builds, including free-threaded CPython, and the Python 3.15
