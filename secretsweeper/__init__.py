@@ -1,13 +1,12 @@
 # ruff: noqa: E402, F405
 import io
+import pathlib
 import pkgutil
 import typing
 
-# An editable (development) install resolves this package to the source tree, while the
-# build installs the compiled binary into site-packages/secretsweeper. Extending the search
-# path with every `secretsweeper` directory on sys.path lets `_core` find it there.
-# For a regular install this is a no-op.
-__path__ = pkgutil.extend_path(__path__, __name__)
+_BINARY_SUFFIXES = frozenset({".so", ".dylib", ".dll", ".pyd"})
+if not any(entry.suffix in _BINARY_SUFFIXES for entry in pathlib.Path(__file__).parent.iterdir()):
+    __path__ = pkgutil.extend_path(__path__, __name__)
 
 from . import _core
 from ._core import MAX_NUMBER_OF_STARS, mask

@@ -22,8 +22,11 @@ if sysconfig.get_config_var("Py_GIL_DISABLED") and sys.version_info < (3, 15):
     _native = None
 else:
     try:
-        from secretsweeper import _native
-    except ImportError:  # wheels built without the extension
+        import secretsweeper._native as _native
+    except ModuleNotFoundError as e:
+        # Only a wheel built without the extension falls back to ctypes.
+        if e.name != "secretsweeper._native":
+            raise
         _native = None
 
 if _native is not None:
