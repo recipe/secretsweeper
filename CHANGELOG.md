@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   source, and a zero-size read, for end of file, flushing the buffered start
   of a possible match unmasked. `None` is now passed through and a zero-size
   read returns `b""`, both keeping the buffered bytes.
+- An installed wheel loads the compiled backend only from the package's own
+  directory. Extending the search to every `secretsweeper` directory on
+  `sys.path` is now limited to source checkouts, whose binary lives in
+  site-packages, so a stray `secretsweeper/` directory next to a script can no
+  longer supply the binary.
+- A `_native` extension that is present but fails to import raises error
+  instead of silently falling back to the ctypes backend.
 
 ### Added
 

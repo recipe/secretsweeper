@@ -31,7 +31,10 @@ binary this interpreter uses (the `_native` extension module, or the ctypes
 shared library where the extension cannot be built) into `zig-out/` and bundles
 it into `.venv/.../site-packages/secretsweeper/`. The package finds it there
 even though the editable install imports the Python sources from the source
-tree.
+tree: when no binary sits next to `secretsweeper/__init__.py`, the package
+extends its search path to every `secretsweeper` directory on `sys.path`. A
+wheel, which ships the binary next to `__init__.py`, searches only its own
+directory.
 
 uv caches the build: deleting `.venv` or `zig-out/` and running `uv sync` again
 installs the cached wheel without recompiling, which is fine. Stale copies of
