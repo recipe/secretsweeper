@@ -26,7 +26,7 @@ const Node = struct {
     edges: Edges = .none,
     /// The identifier of the trie node that acts as the fail move.
     fail: u32 = 0,
-    /// Pattern length.
+    /// Length of the longest pattern that ends at this node.
     len: u32 = 0,
     /// A search pattern identifier.
     id: u32 = 0,
@@ -100,6 +100,25 @@ const Node = struct {
     }
 };
 
+/// One maximal run of overlapping matches, in absolute positions of a call's
+/// input (`reminder ++ text`). Regions never overlap each other and are kept
+/// in increasing order. A region is masked as `min(end - start, max_stars)`
+/// stars, `emitted` of which an earlier streaming call already wrote out
+/// (see `cut` in `mask`). `start` is negative for a region that began before
+/// the current input, i.e. inside output that is already emitted.
+const Region = struct {
+    start: isize,
+    end: usize,
+    emitted: usize = 0,
+
+    /// Stars still owed for the region's prefix `[start, upto)`.
+    fn starsUpTo(self: Region, upto: usize, max_stars: u64) usize {
+        const len: u64 = @intCast(@as(isize, @intCast(upto)) - self.start);
+        const total: usize = @intCast(@min(len, max_stars));
+        return total -| self.emitted;
+    }
+};
+
 /// Aho-Corasick automaton class.
 pub const Aho = struct {
     /// Memory cap for `dfa_table` + `dfa_match` combined (each entry is 4 bytes, so
@@ -145,41 +164,20 @@ pub const Aho = struct {
 
     // Sweeper related variables:
 
-    /// The last found pattern is used to detect overlapping patterns.
-    /// It is a position of the last character of the pattern in the input string.
-    /// As this automaton always detects the leftmost-longest pattern first we don't need
-    /// to take into consideration all possible overlap cases.
-    last_occur: struct {
-        /// The position of the last character of the pattern relative to the
-        /// current input chunk, independent of the masked reminder's length.
-        /// It can be negative for the position in the previous line of the streaming mode.
-        /// A value of -1 means that no occurrences of any pattern have been found yet.
-        pos: isize = -1,
-        /// The pattern length.
-        len: usize = 0,
-        /// Cumulative size.
-        /// If there are two or more overlapping patterns it stands for the total length.
-        cum_len: usize = 0,
-
-        /// Returns the number of characters outside the overlap boundary
-        /// if the given pattern occurrence overlaps, or MAX_INT otherwise.
-        /// This is the difference between the last character positions of the two patterns.
-        fn overlapReminder(
-            self_: *@This(),
-            /// The position of the last character of the given pattern.
-            pos: usize,
-            /// The length of the given pattern.
-            len: usize
-        ) usize {
-            if (@as(isize, @intCast(pos)) - @as(isize, @intCast(len)) < self_.pos) {
-                return @intCast(@as(isize, @intCast(pos)) - self_.pos);
-            }
-            return MAX_INT;
-        }
-    },
-    /// In the streaming mode it may hold a reminder of the previous line that should be taken into consideration
-    /// in the consecutive call.
+    /// Streaming mode: the trailing `depth(state)` input bytes of everything seen
+    /// so far, verbatim. Only these can still belong to a future match, and they
+    /// are kept unmasked because a later match may extend a pending region over
+    /// them, which changes how many stars the region gets.
     reminder: ?[]u8 = null,
+    /// Streaming mode: regions inside `reminder` (positions relative to its first
+    /// byte) whose final extent is not decided yet.
+    pending: std.ArrayList(Region),
+    /// `max_stars` of the last streaming call, so `renderReminder` masks `pending`
+    /// consistently with the output already emitted.
+    pending_max_stars: u64 = 0,
+    /// Owned buffer behind `ss_get_reminder`'s pointer-returning C API; freed by
+    /// the next call that changes the streaming state.
+    rendered_reminder: ?[]u8 = null,
     /// Current state in the trie.
     state: usize = 0,
 
@@ -192,19 +190,32 @@ pub const Aho = struct {
             .nodes = nodes,
             .pidx = 0,
             .total = 0,
-            .last_occur = .{},
+            .pending = try std.ArrayList(Region).initCapacity(allocator, 0),
         };
     }
 
+    /// Ends a stream: drops the reminder and everything pending, and returns the
+    /// automaton to its starting state.
     pub fn reset_reminder(self: *Aho) void {
         if (self.reminder) |reminder| {
             self.allocator.free(reminder);
             self.reminder = null;
         }
+        self.pending.clearRetainingCapacity();
+        self.freeRenderedReminder();
+        self.state = 0;
+    }
+
+    fn freeRenderedReminder(self: *Aho) void {
+        if (self.rendered_reminder) |rendered| {
+            self.allocator.free(rendered);
+            self.rendered_reminder = null;
+        }
     }
 
     pub fn deinit(self: *Aho) void {
         self.reset_reminder();
+        self.pending.deinit(self.allocator);
         for (self.nodes.items) |*node| {
             node.deinitEdges(self.allocator);
         }
@@ -265,6 +276,19 @@ pub const Aho = struct {
         return self.nodes.items[u].id;
     }
 
+    /// Dictionary-suffix output: a non-terminal node reports the longest pattern
+    /// ending at its fail node, so a short pattern is still found while the
+    /// automaton sits inside a longer pattern's trie path (e.g. "ring" at the
+    /// "boring" node of "boring day"). A terminal's own pattern is always at
+    /// least as long as any suffix pattern, so it keeps its own `len`. Called in
+    /// BFS order right after `fail` is set, so the fail node is already final.
+    fn inheritOutput(self: *Aho, v: usize) void {
+        const node = &self.nodes.items[v];
+        if (node.id == 0) {
+            node.len = self.nodes.items[node.fail].len;
+        }
+    }
+
     /// Build fail links in breadth-first order.
     pub fn build(self: *Aho) !void {
         var queue = try std.ArrayList(usize).initCapacity(self.allocator, 0);
@@ -287,93 +311,96 @@ pub const Aho = struct {
                         // fail link; children of the root keep the root as the fail.
                         self.nodes.items[v].fail = @intCast(self.goTo(self.nodes.items[u].fail, c));
                     }
+                    self.inheritOutput(v);
                     try queue.append(self.allocator, v);
                 }
             }
         }
     }
 
-    /// One decided piece of output. `literal` copies `[start, end)` of the
-    /// combined (reminder + text) input; `stars` emits a run of `*`. Kept as a
-    /// list, not one entry per match, because a later overlapping match's
-    /// star-cap can reach back through stars an earlier match already emitted —
-    /// `ensureTailStars` treats that as already satisfied instead of duplicating it.
-    const Op = union(enum) {
-        literal: struct { start: usize, end: usize },
-        stars: usize,
-    };
-
-    /// Drops the last `n` bytes of decided output from `ops`. Always lands inside
-    /// the literal run just pushed for the current match (see `mask`): that run's
-    /// length equals `num` exactly, and `diff <= num` always holds.
-    fn trimTail(ops: *std.ArrayList(Op), n: usize) void {
-        var remaining = n;
-        while (remaining > 0) {
-            const last_idx = ops.items.len - 1;
-            switch (ops.items[last_idx]) {
-                .literal => |lit| {
-                    const len = lit.end - lit.start;
-                    if (len <= remaining) {
-                        ops.shrinkRetainingCapacity(last_idx);
-                        remaining -= len;
-                    } else {
-                        ops.items[last_idx] = .{ .literal = .{ .start = lit.start, .end = lit.end - remaining } };
-                        remaining = 0;
-                    }
-                },
-                .stars => |count| {
-                    if (count <= remaining) {
-                        ops.shrinkRetainingCapacity(last_idx);
-                        remaining -= count;
-                    } else {
-                        ops.items[last_idx] = .{ .stars = count - remaining };
-                        remaining = 0;
-                    }
-                },
-            }
+    /// Copies the `[start, end)` span of the combined `reminder ++ text` input.
+    fn copyInput(dst: []u8, dst_len: *usize, reminder: []const u8, text: []const u8, start: usize, end: usize) void {
+        if (end <= start) return;
+        var s = start;
+        const rlen = reminder.len;
+        if (s < rlen) {
+            const e = @min(end, rlen);
+            @memcpy(dst[dst_len.*..][0 .. e - s], reminder[s..e]);
+            dst_len.* += e - s;
+            s = e;
+        }
+        if (s < end) {
+            @memcpy(dst[dst_len.*..][0 .. end - s], text[s - rlen .. end - rlen]);
+            dst_len.* += end - s;
         }
     }
 
-    /// Ensures the last `size` bytes of decided output are stars, converting or
-    /// splitting trailing `literal` runs as needed. Stops as soon as it meets a
-    /// `stars` run that already covers the rest of `size` — nothing to convert
-    /// there, which is what keeps a chain of overlapping star-caps idempotent.
-    fn ensureTailStars(ops: *std.ArrayList(Op), allocator: std.mem.Allocator, size: usize) !void {
-        var remaining = size;
-        var i = ops.items.len;
-        while (remaining > 0 and i > 0) {
-            i -= 1;
-            switch (ops.items[i]) {
-                .stars => |count| {
-                    if (count <= remaining) {
-                        remaining -= count;
-                        continue;
-                    }
-                    break; // already fully covers what's left; nothing to convert
-                },
-                .literal => |lit| {
-                    const len = lit.end - lit.start;
-                    if (len <= remaining) {
-                        ops.items[i] = .{ .stars = len };
-                        remaining -= len;
-                        continue;
-                    }
-                    const back = remaining;
-                    const front_end = lit.end - back;
-                    ops.items[i] = .{ .literal = .{ .start = lit.start, .end = front_end } };
-                    try ops.insert(allocator, i + 1, .{ .stars = back });
-                    break;
-                },
+    /// Writes the output for the input prefix `[0, cut)`: literal bytes outside
+    /// regions and each region's owed stars. A region reaching past `cut` gets
+    /// the stars owed for its part before `cut` and the rest is appended to
+    /// `self.pending`, rebased so that `cut` becomes position 0. That prefix
+    /// never needs retracting later: `min(len, max_stars)` only grows with the
+    /// region, and its stars are placed leftmost.
+    fn render(self: *Aho, regions: []const Region, reminder: []const u8, text: []const u8, cut: usize, max_stars: u64) ![]u8 {
+        // Every star stands for a distinct input byte before `cut`, so `cut`
+        // bounds the output.
+        var buf = try self.allocator.alloc(u8, cut);
+        errdefer self.allocator.free(buf);
+        var buf_len: usize = 0;
+        var covered: usize = 0;
+        const cut_i: isize = @intCast(cut);
+        for (regions) |r| {
+            const lit_end: usize = @intCast(@min(@max(r.start, 0), cut_i));
+            copyInput(buf, &buf_len, reminder, text, covered, lit_end);
+            if (r.end <= cut) {
+                const n = r.starsUpTo(r.end, max_stars);
+                @memset(buf[buf_len..][0..n], '*');
+                buf_len += n;
+                covered = r.end;
+                continue;
             }
+            // Nothing is owed yet for a region that starts at or after the cut.
+            const upto: usize = if (r.start < cut_i) cut else @intCast(r.start);
+            const n = r.starsUpTo(upto, max_stars);
+            @memset(buf[buf_len..][0..n], '*');
+            buf_len += n;
+            try self.pending.append(self.allocator, .{
+                .start = r.start - cut_i,
+                .end = r.end - cut,
+                .emitted = r.emitted + n,
+            });
+            covered = cut;
         }
+        copyInput(buf, &buf_len, reminder, text, covered, cut);
+        if (buf_len < cut) {
+            buf = try self.allocator.realloc(buf, buf_len);
+        }
+        return buf;
+    }
+
+    /// The output still owed for the reminder if the stream ended now: its bytes
+    /// with the pending regions masked. Leaves the streaming state untouched.
+    pub fn renderReminder(self: *Aho) ![]u8 {
+        const reminder: []const u8 = self.reminder orelse "";
+        // Every pending region ends inside the reminder, so nothing gets re-queued.
+        return self.render(self.pending.items, reminder, "", reminder.len, self.pending_max_stars);
+    }
+
+    /// `renderReminder` into a buffer the automaton owns, for the pointer-returning
+    /// C API. Valid until the next `mask`/`reset_reminder`/`deinit`.
+    pub fn renderReminderCached(self: *Aho) ![]const u8 {
+        self.freeRenderedReminder();
+        const rendered = try self.renderReminder();
+        self.rendered_reminder = rendered;
+        return rendered;
     }
 
     /// Masks all patterns in `text` with `*`.
     ///
     /// Two passes: the first walks the automaton (DFA dispatch when built for
-    /// this automaton, else the fail-link-walking `goTo`) and records an `Op`
-    /// per match instead of writing bytes, so a rare match doesn't force output
-    /// work for every byte in between. The second replays the op list to build
+    /// this automaton, else the fail-link-walking `goTo`) and records the match
+    /// regions instead of writing bytes, so a rare match doesn't force output
+    /// work for every byte in between. The second replays the regions to build
     /// the output in one pass of bulk memcpy/memset.
     ///
     /// `self.state` is premultiplied (`real_state * num_classes`) under DFA
@@ -399,25 +426,22 @@ pub const Aho = struct {
     }) ![]u8 {
         if (!args.is_streaming) {
             self.reset_reminder();
-            self.state = 0;
-            self.last_occur = .{};
         }
-        const reminder: []const u8 = if (self.reminder) |r| r else &[_]u8{};
+        self.freeRenderedReminder();
+        const reminder: []const u8 = self.reminder orelse "";
         const reminder_len = reminder.len;
         const input_len = reminder_len + args.text.len;
 
-        // Pass 1: search. `pos` is absolute (reminder ++ text) position — only
-        // `args.text` is walked here since `self.state`/`self.last_occur` already
-        // reflect having consumed `reminder` in a previous call.
-        var ops = try std.ArrayList(Op).initCapacity(self.allocator, 0);
-        defer ops.deinit(self.allocator);
-        // Absolute position up to which an `Op` already accounts for every byte
-        // seen this call. Starts at 0, not `reminder_len`: the reminder is never
-        // walked byte-by-byte, but a match's star-cap can still reach into it.
-        var flushed_upto: usize = 0;
+        // Pass 1: search. Only `args.text` is walked: `self.state` already
+        // reflects having consumed `reminder` in a previous call, and `regions`
+        // starts from what that call left undecided.
+        var regions = try std.ArrayList(Region).initCapacity(self.allocator, self.pending.items.len);
+        defer regions.deinit(self.allocator);
+        regions.appendSliceAssumeCapacity(self.pending.items);
+        self.pending.clearRetainingCapacity();
+
         const use_dfa = self.dfa_table.len > 0;
         for (args.text, 0..) |c, local_pos| {
-            const pos = reminder_len + local_pos;
             var match_len: usize = 0;
             if (use_dfa) {
                 // At the root, a byte that starts no pattern (or starts only
@@ -442,100 +466,56 @@ pub const Aho = struct {
                 match_len = self.dfa_match[idx];
             } else {
                 self.state = self.goTo(self.state, c);
-                const node = self.nodes.items[self.state];
-                match_len = if (node.id > 0) node.len else 0;
+                match_len = self.nodes.items[self.state].len;
             }
             if (match_len == 0) continue;
-            // This is the difference between the last character positions of the two patterns.
-            const num = self.last_occur.overlapReminder(local_pos, match_len);
-            self.last_occur.cum_len = if (num == MAX_INT) match_len else self.last_occur.cum_len + num;
-            // Replace the last found pattern position and length.
-            defer {
-                self.last_occur.pos = @intCast(local_pos);
-                self.last_occur.len = match_len;
+            const end = reminder_len + local_pos + 1;
+            // The reminder holds exactly the state's depth of bytes, so a match
+            // never starts before this call's input; saturate rather than trust it.
+            var start: isize = @intCast(end -| match_len);
+            var emitted: usize = 0;
+            // A match can start before earlier regions: a shorter pattern that is
+            // a suffix of a longer one's prefix is reported first (see
+            // `inheritOutput`), then the longer one completes — "ash", then
+            // "masher" in "smasher". Merge every region it overlaps, peeling
+            // from the tail; adjacent regions stay separate.
+            while (regions.items.len > 0) {
+                const last = regions.items[regions.items.len - 1];
+                if (@as(isize, @intCast(last.end)) <= start) break;
+                start = @min(start, last.start);
+                emitted += last.emitted;
+                regions.shrinkRetainingCapacity(regions.items.len - 1);
             }
-            // Difference between the pattern length and max number of stars.
-            // If this difference is greater than 0 we need to limit the mask.
-            // For overlapping patterns, we must account for the stars already printed by the previous pattern.
-            var diff: usize = 0;
-            if (self.last_occur.cum_len > args.max_stars) {
-                diff = self.last_occur.cum_len - args.max_stars;
-                diff = @min(num, diff);
-            }
-            var size = match_len - diff;
-            if (num < MAX_INT) {
-                if (self.last_occur.len >= args.max_stars) {
-                    size = 0;
-                } else {
-                    size = @min(num, size);
-                }
-            }
-            if (diff > 0 or size > 0) {
-                // `pos + 1 - flushed_upto` equals `num` exactly (both the reminder
-                // and every prior match set `flushed_upto` to their own `pos + 1`),
-                // so `diff <= num` guarantees `trimTail` never reaches past this run.
-                if (pos + 1 > flushed_upto) {
-                    try ops.append(self.allocator, .{ .literal = .{ .start = flushed_upto, .end = pos + 1 } });
-                }
-                flushed_upto = pos + 1;
-                if (diff > 0) trimTail(&ops, diff);
-                if (size > 0) try ensureTailStars(&ops, self.allocator, size);
-            }
+            try regions.append(self.allocator, .{ .start = start, .end = end, .emitted = emitted });
         }
 
-        // Pass 2: reconstruct. Copies a `[start, end)` span of the combined
-        // reminder++text input, splitting at the reminder/text boundary as needed.
-        var buf = try self.allocator.alloc(u8, input_len);
-        var buf_len: usize = 0;
-        const copyRange = struct {
-            fn call(dst: []u8, dst_len: *usize, rem: []const u8, txt: []const u8, rlen: usize, start: usize, end: usize) void {
-                if (end <= start) return;
-                var s = start;
-                if (s < rlen) {
-                    const e = @min(end, rlen);
-                    @memcpy(dst[dst_len.*..][0 .. e - s], rem[s..e]);
-                    dst_len.* += e - s;
-                    s = e;
-                }
-                if (s < end) {
-                    @memcpy(dst[dst_len.*..][0 .. end - s], txt[s - rlen .. end - rlen]);
-                    dst_len.* += end - s;
-                }
-            }
-        }.call;
-
-        for (ops.items) |op| {
-            switch (op) {
-                .literal => |lit| copyRange(buf, &buf_len, reminder, args.text, reminder_len, lit.start, lit.end),
-                .stars => |count| {
-                    @memset(buf[buf_len..][0..count], '*');
-                    buf_len += count;
-                },
-            }
-        }
-        copyRange(buf, &buf_len, reminder, args.text, reminder_len, flushed_upto, input_len);
-
-        var new_reminder_len: usize = 0;
+        // Pass 2: output. In streaming mode only the current state's trie depth
+        // of trailing bytes can still belong to a future match (anything earlier
+        // would need a deeper state), so those bytes and any region reaching
+        // into them stay pending; retaining more would grow the reminder without
+        // bound on inputs that keep the automaton away from the starting state.
+        // `self.state` is premultiplied under DFA dispatch, so recover the real
+        // node index once here.
+        var cut = input_len;
         if (args.is_streaming) {
-            self.reset_reminder();
-            // Only the current state's trie depth of trailing bytes can still belong to
-            // a future match, so retaining more would grow the reminder without bound
-            // on inputs that keep the automaton away from the starting state.
-            // Masking may have shrunk the buffer below that depth; retain what exists.
-            // `self.state` is premultiplied under DFA dispatch, so recover the real node
-            // index once here (once per call, not per byte, so the division is cheap).
             const real_state = if (use_dfa) self.state / self.num_classes else self.state;
-            new_reminder_len = @min(self.nodes.items[real_state].depth, buf_len);
-            if (new_reminder_len > 0) {
-                self.reminder = try self.allocator.alloc(u8, new_reminder_len);
-                @memcpy(self.reminder.?, buf[buf_len - new_reminder_len..buf_len]);
+            cut = input_len -| self.nodes.items[real_state].depth;
+        }
+        const out = try self.render(regions.items, reminder, args.text, cut, args.max_stars);
+        if (args.is_streaming) {
+            errdefer self.allocator.free(out);
+            var kept: ?[]u8 = null;
+            if (input_len > cut) {
+                const buf = try self.allocator.alloc(u8, input_len - cut);
+                var buf_len: usize = 0;
+                copyInput(buf, &buf_len, reminder, args.text, cut, input_len);
+                kept = buf;
             }
-            self.last_occur.pos = self.last_occur.pos - @as(isize, @intCast(args.text.len));
+            if (self.reminder) |old| self.allocator.free(old);
+            self.reminder = kept;
+            self.pending_max_stars = args.max_stars;
         }
-        if (buf_len < input_len or new_reminder_len > 0) {
-            buf = try self.allocator.realloc(buf, buf_len - new_reminder_len);
-        }
-        return buf;
+        return out;
     }
 
     /// Builds the byte-class-compressed, premultiplied DFA that `mask` dispatches
@@ -630,6 +610,7 @@ pub const Aho = struct {
                     if (u != 0) {
                         self.nodes.items[v].fail = raw[fail_u * nc + cl];
                     }
+                    self.inheritOutput(v);
                     raw[u * nc + cl] = @intCast(v);
                     try queue.append(self.allocator, v);
                 } else if (u != 0) {
@@ -650,6 +631,13 @@ pub const Aho = struct {
     }
 
 };
+
+/// The output still owed for the stream, i.e. what `consume_reminder` returns.
+fn expectReminder(ac: *Aho, expected: []const u8) !void {
+    const rendered = try ac.renderReminder();
+    defer ac.allocator.free(rendered);
+    try testing.expectEqualStrings(expected, rendered);
+}
 
 test "Aho" {
     var gpa = std.heap.DebugAllocator(.{}){};
@@ -703,7 +691,7 @@ test "Aho" {
         const buffer = try ac.mask(.{ .text= file_content[i], .is_streaming = true });
         defer allocator.free(buffer);
         try testing.expectEqualStrings(expected[i], buffer);
-        try testing.expectEqualStrings("", ac.reminder orelse "");
+        try expectReminder(&ac, "");
     }
 
     ac.deinit();
@@ -718,7 +706,7 @@ test "Aho" {
         const buffer = try ac.mask(.{ .text= file_content[i], .is_streaming = true, .max_stars = 1 });
         defer allocator.free(buffer);
         try testing.expectEqualStrings(expected[i], buffer);
-        try testing.expectEqualStrings(expected_reminder[i], ac.reminder orelse "");
+        try expectReminder(&ac, expected_reminder[i]);
     }
 
     ac.deinit();
@@ -734,9 +722,9 @@ test "Aho" {
         const buffer = try ac.mask(.{ .text= file_content[i], .is_streaming = true, .max_stars = 1 });
         defer allocator.free(buffer);
         try testing.expectEqualStrings(expected[i], buffer);
-        try testing.expectEqualStrings(expected_reminder[i], ac.reminder orelse "");
+        try expectReminder(&ac, expected_reminder[i]);
     }
-    try testing.expectEqualStrings("*", ac.reminder orelse "");
+    try expectReminder(&ac, "*");
 }
 
 test "Aho reminder is bounded by the longest pattern prefix" {
@@ -760,7 +748,7 @@ test "Aho reminder is bounded by the longest pattern prefix" {
             expected = "aaaa";
         }
         try testing.expectEqualStrings(expected, buffer);
-        try testing.expectEqualStrings("a", ac.reminder orelse "");
+        try expectReminder(&ac, "a");
     }
 
     // The retained "a" combines with a "b" in the next chunk into a match.
@@ -768,12 +756,12 @@ test "Aho reminder is bounded by the longest pattern prefix" {
     const masked = try ac.mask(.{ .text = "b", .is_streaming = true });
     defer allocator.free(masked);
     try testing.expectEqualStrings("", masked);
-    try testing.expectEqualStrings("**", ac.reminder orelse "");
+    try expectReminder(&ac, "**");
 
     const rest = try ac.mask(.{ .text = "c", .is_streaming = true });
     defer allocator.free(rest);
     try testing.expectEqualStrings("**c", rest);
-    try testing.expectEqualStrings("", ac.reminder orelse "");
+    try expectReminder(&ac, "");
 }
 
 test "streaming rebases the last match when the reminder shrinks" {
@@ -791,9 +779,79 @@ test "streaming rebases the last match when the reminder shrinks" {
             const masked = try ac.mask(.{ .text = chunk, .max_stars = 0, .is_streaming = true });
             defer testing.allocator.free(masked);
             try testing.expectEqualStrings("", masked);
-            // A previous match must be behind the next chunk's first byte.
-            try testing.expect(ac.last_occur.pos < 0);
         }
-        try testing.expectEqualStrings("", ac.reminder orelse "");
+        try expectReminder(&ac, "");
+    }
+}
+
+test "a shorter pattern ending inside a longer pattern's trie path is found" {
+    for ([_]bool{ false, true }) |dfa| {
+        var ac = try Aho.init(testing.allocator);
+        defer ac.deinit();
+        _ = try ac.insert("boring day");
+        _ = try ac.insert("ring");
+        _ = try ac.insert("abcd");
+        _ = try ac.insert("bc");
+        if (dfa) {
+            try testing.expect(try ac.buildDfa());
+        } else {
+            try ac.build();
+        }
+        const masked = try ac.mask(.{ .text = "boring data abcx" });
+        defer testing.allocator.free(masked);
+        try testing.expectEqualStrings("bo**** data a**x", masked);
+    }
+}
+
+test "a later match may start before an earlier one, across chunks and regions" {
+    for ([_]bool{ false, true }) |dfa| {
+        for ([_]u64{ 15, 1, 0 }) |limit| {
+            var ac = try Aho.init(testing.allocator);
+            defer ac.deinit();
+            _ = try ac.insert("ab");
+            _ = try ac.insert("c");
+            _ = try ac.insert("abcd");
+            _ = try ac.insert("bcx");
+            if (dfa) {
+                try testing.expect(try ac.buildDfa());
+            } else {
+                try ac.build();
+            }
+            // "ab" and the adjacent "c" are two regions; "abcd" then swallows both.
+            const one_shot = try ac.mask(.{ .text = "zabcdz", .max_stars = limit });
+            defer testing.allocator.free(one_shot);
+            const stars: []const u8 = "****";
+            var expected = std.ArrayList(u8).empty;
+            defer expected.deinit(testing.allocator);
+            try expected.append(testing.allocator, 'z');
+            try expected.appendSlice(testing.allocator, stars[0..@min(4, limit)]);
+            try expected.append(testing.allocator, 'z');
+            try testing.expectEqualStrings(expected.items, one_shot);
+
+            // The same, streamed one byte at a time: "ab" then "c" are masked
+            // provisionally while "abcd" (or "bcx") could still overlap them.
+            var out = std.ArrayList(u8).empty;
+            defer out.deinit(testing.allocator);
+            for ("zabcdz") |byte| {
+                const chunk = try ac.mask(.{ .text = &[_]u8{byte}, .max_stars = limit, .is_streaming = true });
+                defer testing.allocator.free(chunk);
+                try out.appendSlice(testing.allocator, chunk);
+            }
+            const rest = try ac.renderReminder();
+            defer testing.allocator.free(rest);
+            try out.appendSlice(testing.allocator, rest);
+            try testing.expectEqualStrings(expected.items, out.items);
+            ac.reset_reminder();
+
+            // A region straddling the cut: "abc" is decided, but "bcx" could
+            // still extend over "bc", so only the stars for "a" are emitted.
+            const head = try ac.mask(.{ .text = "abc", .max_stars = limit, .is_streaming = true });
+            defer testing.allocator.free(head);
+            try testing.expectEqualStrings("", head);
+            const tail = try ac.mask(.{ .text = "x", .max_stars = limit, .is_streaming = true });
+            defer testing.allocator.free(tail);
+            try testing.expectEqualStrings(stars[0..@min(1, limit)], tail);
+            try expectReminder(&ac, stars[0..@min(4, limit) -| @min(1, limit)]);
+        }
     }
 }

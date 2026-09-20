@@ -95,16 +95,18 @@ export fn ss_free(ptr: ?[*]u8, len: usize) void {
     }
 }
 
-/// Get the streaming-mode reminder. Returns a pointer into the automaton's
-/// internal state that stays valid until the next `ss_mask`/`ss_reset_reminder`
-/// call; the caller must copy it and must not free it.
+/// Get the output still owed for the stream: the streaming-mode reminder with
+/// its pending matches masked. Returns a pointer into the automaton's internal
+/// state that stays valid until the next `ss_mask`/`ss_reset_reminder` call;
+/// the caller must copy it and must not free it. On allocation failure returns
+/// null with `out_len` set to `SIZE_MAX`.
 export fn ss_get_reminder(ac: *Aho, out_len: *usize) ?[*]const u8 {
-    const reminder = ac.reminder orelse {
-        out_len.* = 0;
+    const reminder = ac.renderReminderCached() catch {
+        out_len.* = std.math.maxInt(usize);
         return null;
     };
     out_len.* = reminder.len;
-    return reminder.ptr;
+    return if (reminder.len > 0) reminder.ptr else null;
 }
 
 /// Reset the streaming-mode reminder.

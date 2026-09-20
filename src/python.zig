@@ -266,7 +266,8 @@ fn mask(self: ?*PyObject, args: ?[*]const ?*PyObject, nargs: isize) callconv(.c)
     return PyBytes_FromStringAndSize(if (masked.len > 0) masked.ptr else null, @intCast(masked.len));
 }
 
-/// `get_reminder(automaton) -> bytes`: the streaming-mode reminder, empty if none.
+/// `get_reminder(automaton) -> bytes`: the output still owed for the stream
+/// (the reminder with its pending matches masked), empty if none.
 fn getReminder(self: ?*PyObject, args: ?[*]const ?*PyObject, nargs: isize) callconv(.c) ?*PyObject {
     _ = self;
     if (nargs != 1) {
@@ -274,7 +275,11 @@ fn getReminder(self: ?*PyObject, args: ?[*]const ?*PyObject, nargs: isize) callc
         return null;
     }
     const ac = automatonArg(args.?[0].?) orelse return null;
-    const reminder: []const u8 = ac.reminder orelse "";
+    const reminder = ac.renderReminder() catch {
+        PyErr_SetString(PyExc_MemoryError, "failed to render the reminder");
+        return null;
+    };
+    defer ac.allocator.free(reminder);
     return PyBytes_FromStringAndSize(if (reminder.len > 0) reminder.ptr else null, @intCast(reminder.len));
 }
 

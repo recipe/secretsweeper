@@ -58,6 +58,8 @@ def _generator() -> typing.Iterator[bytes]:
             "s******",
         ),
         ("friendship", ("end", "ship", "friend"), "**********"),
+        ("boring data", ("boring day", "ring"), "bo**** data"),
+        ("bored", ("borer", "ore"), "b***d"),
     ],
 )
 def test_mask(input: str, patterns: typing.Iterable[str], expected: str) -> None:
