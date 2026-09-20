@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Overlapping matches are tracked as regions, so a longer match that completes
   after a shorter one it contains (`masher` after `ash` in `smasher`) masks the
   whole run, also when the run spans streaming chunks.
+- `StreamWrapper.read()` and `readline()` took `None` from a non-blocking
+  source, and a zero-size read, for end of file, flushing the buffered start
+  of a possible match unmasked. `None` is now passed through and a zero-size
+  read returns `b""`, both keeping the buffered bytes.
 
 ### Added
 
