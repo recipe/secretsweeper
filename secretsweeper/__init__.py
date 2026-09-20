@@ -31,7 +31,27 @@ class StreamWrapper(io.RawIOBase):
         self._stream = stream
         self._wrapper = _core._StreamWrapper(patterns, limit=limit)
 
-    def read(self, size: int = -1) -> bytes:
+    def _masking_read(self, reader: typing.Callable[[int], bytes | None], size: int) -> bytes | None:
+        """
+        Pull chunks from `reader` until one yields masked output, EOF, or a would-block.
+
+        Only b"" from the source means EOF; that is the one point where the held
+        partial match is flushed. None (non-blocking source with no data ready) and
+        a zero-size read must keep the automaton state, or a secret split across
+        the boundary would be emitted unmasked.
+        """
+        if size == 0:
+            return b""
+        while True:
+            carry = reader(size)
+            if carry is None:
+                return None
+            if not carry:
+                return self._wrapper.consume_reminder()
+            if res := self._wrapper.masking_read(carry):
+                return res
+
+    def read(self, size: int = -1) -> bytes | None:
         """
         Read up to size bytes from the object and return them.
 
@@ -44,12 +64,12 @@ class StreamWrapper(io.RawIOBase):
         :return: If 0 bytes are returned, and size was not 0, this indicates end of file.
         If the object is in non-blocking mode and no bytes are available, None is returned.
         """
-        while carry := self._stream.read(size):
-            if res := self._wrapper.masking_read(carry):
-                return res
-        return self._wrapper.consume_reminder()
+        return self._masking_read(self._stream.read, size)
 
-    def readline(self, size: int | None = -1, /) -> bytes:
+    # typeshed types IOBase.readline() as bytes only, but a non-blocking source
+    # with no data ready yields None, and that is passed through rather than
+    # mistaken for EOF, exactly as read() does.
+    def readline(self, size: int | None = -1, /) -> bytes | None:  # ty: ignore[invalid-method-override]
         """
         Read and return one line from the stream.
 
@@ -58,13 +78,11 @@ class StreamWrapper(io.RawIOBase):
 
         :param size: If size is specified, at most size bytes will be read.
         :return: The line with masked patterns. The line terminator is always b'\n' for binary files.
+        If the object is in non-blocking mode and no bytes are available, None is returned.
         """
         if size is None:
             size = -1
-        while carry := self._stream.readline(size):
-            if res := self._wrapper.masking_read(carry):
-                return res
-        return self._wrapper.consume_reminder()
+        return self._masking_read(self._stream.readline, size)
 
     def seekable(self):
         """This stream does not support seek operations."""

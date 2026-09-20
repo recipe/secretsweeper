@@ -380,6 +380,40 @@ def test_stream_wrapper_bytes_io() -> None:
     assert result == b"ny"
 
 
+class _NonBlockingSource:
+    """A stream in non-blocking mode: yields None while no data is ready, b"" at EOF."""
+
+    def __init__(self, chunks: typing.Iterable[bytes | None]) -> None:
+        self._chunks = list(chunks)
+
+    def read(self, size: int = -1) -> bytes | None:
+        return self._chunks.pop(0) if self._chunks else b""
+
+    readline = read
+
+
+@pytest.mark.parametrize("method", ["read", "readline"])
+def test_stream_wrapper_non_blocking_source_returns_none(method: str) -> None:
+    # A would-block read (None) is not EOF: the held prefix of a possible match
+    # must stay buffered, and None must be passed through as the docstring says.
+    source = _NonBlockingSource([b"user=admin pass", None, b"word123 ok\n"])
+    stream = secretsweeper.StreamWrapper(typing.cast(typing.IO[bytes], source), (b"password123",))
+    call = getattr(stream, method)
+    assert call(64) == b"user=admin "
+    assert call(64) is None
+    assert call(64) == b"*" * 11 + b" ok\n"
+    assert call(64) == b""
+
+
+def test_stream_wrapper_read_zero_does_not_flush() -> None:
+    # read(0) must return b"" without ending the stream: the buffered partial
+    # match still has to be masked once the rest of the data arrives.
+    stream = secretsweeper.StreamWrapper(io.BytesIO(b"user=admin password123 ok\n"), (b"password123",))
+    assert stream.read(15) == b"user=admin "
+    assert stream.read(0) == b""
+    assert stream.readall() == b"*" * 11 + b" ok\n"
+
+
 def test_stream_wrapper_read_limited_size() -> None:
     def _iter() -> typing.Iterator[bytes]:
         with open(FIXTURES_DIR / "file.txt", "rb") as f:
