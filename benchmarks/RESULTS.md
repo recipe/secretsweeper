@@ -18,7 +18,7 @@ uv run --group benchmark python benchmarks/report.py
 | OS | Darwin 25.6.0 (arm64) |
 | Python | CPython 3.14.6 |
 | Zig | 0.16.0 |
-| secretsweeper | 0.1.1 |
+| secretsweeper | 0.2.0 |
 
 ## Corpus
 
@@ -32,23 +32,30 @@ Each engine measured as a single total wall-clock call (build/compile + search +
 xychart-beta
     title "Masking throughput - min MB/s across interleaved rounds (higher is better)"
     x-axis ["secretsweeper", "ahocorasick_rs", "acora", "pyahocorasick", "re", "ahocorapy"]
-    y-axis "MB/s" 0 --> 1028
-    bar [934.8, 593.3, 176.3, 139.6, 82.0, 21.6]
+    y-axis "MB/s" 0 --> 1062
+    bar [965.6, 608.5, 182.0, 144.1, 84.2, 21.8]
 ```
 
 | Engine | min | avg | min throughput | vs. fastest | correct |
 |---|---:|---:|---:|---:|:---:|
-| secretsweeper `0.1.1` | 112.2 ms | 115.9 ms | 934.8 MB/s | 1.00x | ✅ |
-| ahocorasick_rs `1.0.3` | 176.8 ms | 180.1 ms | 593.3 MB/s | 1.58x | ✅ |
-| acora `2.5` | 594.7 ms | 623.4 ms | 176.3 MB/s | 5.30x | ✅ |
-| pyahocorasick `2.3.1` | 751.3 ms | 821.8 ms | 139.6 MB/s | 6.70x | ✅ |
-| re (stdlib regex) `python 3.14.6` | 1279.4 ms | 1290.7 ms | 82.0 MB/s | 11.41x | ✅ |
-| ahocorapy (pure python) `1.8.0` | 4859.8 ms | 4880.0 ms | 21.6 MB/s | 43.32x | ✅ |
+| [secretsweeper][1] `0.2.0` | 108.6 ms | 116.0 ms | 965.6 MB/s | 1.00x | ✅ |
+| [ahocorasick_rs][2] `1.0.3` | 172.3 ms | 174.3 ms | 608.5 MB/s | 1.59x | ✅ |
+| [acora][3] `2.5` | 576.1 ms | 587.5 ms | 182.0 MB/s | 5.31x | ✅ |
+| [pyahocorasick][4] `2.3.1` | 727.7 ms | 775.2 ms | 144.1 MB/s | 6.70x | ✅ |
+| [re (stdlib regex)][5] `python 3.14.6` | 1245.3 ms | 1258.5 ms | 84.2 MB/s | 11.47x | ✅ |
+| [ahocorapy (pure python)][6] `1.8.0` | 4811.2 ms | 4875.7 ms | 21.8 MB/s | 44.30x | ✅ |
 
 ## Notes
 
 - **Pattern set size vs. the DFA path.** secretsweeper dispatches through a byte-class-compressed DFA when the pattern set fits `Aho.DFA_MEMORY_CAP` (currently **20 MiB**, `src/aho.zig`), falling back to a classic trie/fail-link walk otherwise - both are correct, but the DFA is usually faster for small-to-moderate pattern sets. This run's 17 patterns (~10.0 KiB total) comfortably fit under the cap, so this benchmark exercises the DFA path specifically. A much larger or more numerous pattern set can exceed the cap and fall back - re-run against your own patterns if that distinction matters for your use case.
 - **This corpus is a best case for the bigram gate.** The DFA dispatch skips a byte entirely (no `dfa_table`/`dfa_match` lookup at all) whenever it's at the root and the next two bytes provably can't start any pattern - a large win when matches are sparse (this corpus: real matches roughly every ~370 bytes), since most of the file never leaves the root state. Corpora with frequent or back-to-back matches spend less time at the root and benefit less (verified: no regression on an all-matching synthetic corpus, only reduced upside).
-- **Rebuild before re-running after a source change.** An editable install (`pip install -e .`) can leave a stale compiled library sitting in the `secretsweeper/` source directory that shadows a freshly rebuilt one in site-packages. After changing anything under `src/`, run `uv pip install -e . --reinstall` and, if in doubt, copy `zig-out/lib/{libsecretsweeper.dylib or .so,_native.abi3.so}` into `secretsweeper/` directly before benchmarking - otherwise you may be measuring an old build without realizing it.
+- **Rebuild before re-running after a source change.** An editable install (`pip install -e .`) can leave a stale compiled library sitting in the `secretsweeper/` source directory that shadows a freshly rebuilt one in site-packages. After changing anything under `src/`, run `uv pip install -e . --reinstall` and, if in doubt, copy `zig-out/lib/_native.abi3.so` (or the `libsecretsweeper.*` ctypes library) into `secretsweeper/` directly before benchmarking - otherwise you may be measuring an old build without realizing it.
 - **Single-machine, single-run numbers.** These are wall-clock measurements on one machine at one point in time (see **Machine**, above) - thermal throttling, background load, and machine-to-machine variance are all real. Treat cross-run deltas smaller than ~10-15% as noise unless reproduced across multiple separate invocations.
+
+[1]: https://github.com/recipe/secretsweeper
+[2]: https://github.com/G-Research/ahocorasick_rs
+[3]: https://github.com/scoder/acora
+[4]: https://github.com/WojciechMula/pyahocorasick
+[5]: https://github.com/python/cpython/tree/main/Lib/re
+[6]: https://github.com/FrederikP/ahocorapy
 

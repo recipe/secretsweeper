@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-20
+
 ### Fixed
 
 - `mask()` missed a pattern that ends while the automaton is inside a longer
@@ -174,7 +176,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enables use with in-memory buffers, file-like objects, and streaming
   pipelines.
 
-[unreleased]: https://github.com/recipe/secretsweeper/compare/0.1.1...HEAD
+[unreleased]: https://github.com/recipe/secretsweeper/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/recipe/secretsweeper/compare/0.1.1...0.2.0
 [0.1.1]: https://github.com/recipe/secretsweeper/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.8...0.1.0
 [0.0.1-alpha.8]: https://github.com/recipe/secretsweeper/compare/0.0.1-alpha.7...0.0.1-alpha.8

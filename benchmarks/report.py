@@ -157,6 +157,38 @@ def render_bar_chart(available: list[tuple[str, dict]]) -> list[str]:
     ]
 
 
+# Source repository of every engine `bench.py` registers, keyed by its display
+# name. The stdlib `re` engine points at CPython's own tree.
+ENGINE_URLS = {
+    "secretsweeper": "https://github.com/recipe/secretsweeper",
+    "ahocorasick_rs": "https://github.com/G-Research/ahocorasick_rs",
+    "acora": "https://github.com/scoder/acora",
+    "pyahocorasick": "https://github.com/WojciechMula/pyahocorasick",
+    "re (stdlib regex)": "https://github.com/python/cpython/tree/main/Lib/re",
+    "ahocorapy (pure python)": "https://github.com/FrederikP/ahocorapy",
+}
+
+
+class _EngineLinks:
+    """Numbers engines' repository links in order of first use, `[name][n]`
+    reference style, so the URLs can be listed once at the bottom of the file
+    instead of cluttering the table."""
+
+    def __init__(self) -> None:
+        self._numbers: dict[str, int] = {}
+
+    def __call__(self, name: str) -> str:
+        """The engine name as a numbered reference link, or bare if its repository is unknown."""
+        if name not in ENGINE_URLS:
+            return name
+        number = self._numbers.setdefault(name, len(self._numbers) + 1)
+        return f"[{name}][{number}]"
+
+    def definitions(self) -> list[str]:
+        """The `[n]: url` lines for every engine linked so far, in number order."""
+        return [f"[{number}]: {ENGINE_URLS[name]}" for name, number in self._numbers.items()]
+
+
 def render_markdown(data: dict, sysinfo: dict) -> str:
     manifest = data["manifest"]
     results = data["results"]
@@ -169,6 +201,7 @@ def render_markdown(data: dict, sysinfo: dict) -> str:
 
     lines: list[str] = []
     a = lines.append
+    link = _EngineLinks()
 
     a("# SecretSweeper Masking Benchmark")
     a("")
@@ -239,7 +272,7 @@ def render_markdown(data: dict, sysinfo: dict) -> str:
         correct_mark = "✅" if r["correct"] else "❌"
         version = f" `{r['version']}`" if r.get("version") else ""
         a(
-            f"| {name}{version} | {r['min_ms']:.1f} ms | {r['avg_ms']:.1f} ms | "
+            f"| {link(name)}{version} | {r['min_ms']:.1f} ms | {r['avg_ms']:.1f} ms | "
             f"{r['min_mb_s']:.1f} MB/s | {vs_fastest} | {correct_mark} |"
         )
     a("")
@@ -291,9 +324,13 @@ def render_markdown(data: dict, sysinfo: dict) -> str:
         a("<details><summary>Unavailable on this run</summary>")
         a("")
         for name, r in unavailable:
-            a(f"- **{name}**: {r['note']}")
+            a(f"- **{link(name)}**: {r['note']}")
         a("")
         a("</details>")
+        a("")
+
+    if definitions := link.definitions():
+        lines.extend(definitions)
         a("")
 
     return "\n".join(lines) + "\n"
